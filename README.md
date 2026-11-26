@@ -1,5 +1,4 @@
-# Geroprotector screening with frozen molecular encoders — code and stored predictions
-
+# Geroprotector screening with frozen molecular encoders
 Runnable code, input data and stored predictions for a study on ranking candidate
 geroprotectors with pretrained molecular encoders. It accompanies a manuscript currently under
 review; the manuscript itself is **not** part of this repository, and the text below was
