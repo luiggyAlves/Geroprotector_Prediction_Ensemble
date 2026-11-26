@@ -1,0 +1,5 @@
+base,critério,limiar escolhido (pico OOF),"F1 teste em 0,5",F1 teste no limiar escolhido
+base padronizada,Seleção gulosa,0.5,0.44007973813136375,0.44007973813136375
+base padronizada,Seleção gulosa (PR-AUC),0.54,0.4351830696901293,0.4434035992839236
+base não padronizada,Seleção gulosa,0.5,0.467577369533069,0.467577369533069
+base não padronizada,Seleção gulosa (PR-AUC),0.54,0.476063358540486,0.48025055211177947
