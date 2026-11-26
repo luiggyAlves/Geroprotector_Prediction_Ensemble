@@ -1,4 +1,4 @@
-smiles,label,sources,name,smiles_original,inchikey,n_formas,rotulo_conflitante
+smiles,label,sources,name,smiles_original,inchikey,n_forms,conflicting_label
 C#CC1(O)CCC2C3CCC4=CCCCC4C3C(=C)CC21CC,1,Wong2023_Senolytics[29],,C#CC1(O)CCC2C3CCC4=CCCCC4C3C(=C)CC21CC,RPLCPCMSCLEKRS-UHFFFAOYSA-N,1,False
 C#CC1(O)CCC2C3CCc4cc(OC5CCCC5)ccc4C3CCC21C,1,Wong2023_Senolytics[29],,C#CC1(O)CCC2C3CCc4cc(OC5CCCC5)ccc4C3CCC21C,PWZUUYSISTUNDW-UHFFFAOYSA-N,1,False
 C=CCCCCCCCCCCCC(O)CC(O)COC(C)=O,1,Wong2023_Senolytics[29],,C#CCCCCCCCCCCCC(O)CC(O)COC(C)=O.C=CCCCCCCCCCCCC(O)CC(O)COC(C)=O,NLBYRERHXBTBBR-UHFFFAOYSA-N,1,False

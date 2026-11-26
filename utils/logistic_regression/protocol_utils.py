@@ -1,19 +1,18 @@
-"""Funções do EX_032.
+"""The protocol: nested fits, metrics, ensembles and final models.
 
-O EX_032 refaz o pipeline do EX_027 a partir de uma base padronizada quimicamente: as
-duplicatas estruturais que o EX_027 só contava agora são removidas antes de gerar os
-embeddings. A partir daí:
+Runs the pipeline over a chemically standardized dataset, where structural duplicates are
+merged before the embeddings are computed. From there:
 
-* regressão logística L2 por representação, com C escolhido por CV interna aninhada (como no
-  EX_027), em 5 folds x 3 seeds, nos protocolos scaffold e aleatório;
-* métricas no limiar 0,5, em treino e teste, por fold e na média;
-* três ensembles com as 20 representações (soft, soft ponderado por ROC-AUC, stacking) e a
-  seleção gulosa, todos decididos só com a parte de treino de cada fold;
-* modelos finais treinados com a base inteira.
+* L2 logistic regression per representation, with C chosen by nested inner CV, over 5 folds x
+  3 seeds, under both the scaffold and the random split;
+* metrics at threshold 0.5, on train and test, per fold and averaged;
+* three ensembles over all representations (soft voting, ROC-AUC-weighted soft voting,
+  stacking) plus greedy selection, all decided from the training part of each fold alone;
+* final models fitted on the whole dataset.
 
-Reaproveita do ex027_utils a padronização (RDKit), os folds, o pipeline da regressão
-logística, a CV interna e as medidas de diversidade, para que os dois experimentos usem
-exatamente o mesmo código nessas partes.
+Standardization (RDKit), the folds, the logistic-regression pipeline, the inner CV and the
+diversity measures come from core_utils, so that every experiment shares exactly the same code
+in those parts.
 """
 from __future__ import annotations
 
@@ -26,88 +25,88 @@ from sklearn.metrics import (accuracy_score, average_precision_score, balanced_a
                              roc_auc_score)
 from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold, cross_val_predict
 
-from ex027_utils import (RANDOM_STATE, Checkpoints, bedroc, build_pipeline,  # noqa: F401
+from core_utils import (RANDOM_STATE, Checkpoints, bedroc, build_pipeline,  # noqa: F401
                          chemistry_table, correlation_measure, disagreement_measure,
                          double_fault_measure, duplicate_audit, external_cuts, inner_oof_and_C,
                          log_external_read, pairwise_matrix, precision_at_k, q_statistic,
                          repeated_random_folds, repeated_scaffold_folds)
 
-LIMIAR_PADRAO = 0.5
-METRICAS = ["accuracy", "recall", "precision", "f1", "balanced_accuracy", "mcc", "roc_auc",
+DEFAULT_THRESHOLD = 0.5
+METRICS = ["accuracy", "recall", "precision", "f1", "balanced_accuracy", "mcc", "roc_auc",
             "average_precision"]
-NOMES_METRICAS = {"accuracy": "Accuracy", "recall": "Recall", "precision": "Precision",
+METRIC_NAMES = {"accuracy": "Accuracy", "recall": "Recall", "precision": "Precision",
                   "f1": "F1", "balanced_accuracy": "Balanced accuracy", "mcc": "MCC",
                   "roc_auc": "ROC-AUC", "average_precision": "AP (PR-AUC)"}
-K_TRIAGEM = (50, 100, 200)
-ENSEMBLES = ["Soft voting", "Soft voting ponderado (ROC-AUC)", "Stacking", "Seleção gulosa"]
-GRADE_LIMIAR = np.round(np.arange(0.40, 0.6001, 0.01), 2)
+SCREENING_K = (50, 100, 200)
+ENSEMBLES = ["Soft voting", "Weighted soft voting (ROC-AUC)", "Stacking", "Greedy (F1)"]
+THRESHOLD_GRID = np.round(np.arange(0.40, 0.6001, 0.01), 2)
 
 
 # --------------------------------------------------------------------------------------
-# 1. Padronização química
+# 1. Chemical standardization
 # --------------------------------------------------------------------------------------
 
-def padronizar_base(base, coluna_smiles="smiles", coluna_rotulo="label"):
-    """Padroniza a base e remove as duplicatas estruturais.
+def standardize_dataset(dataset, smiles_column="smiles", label_column="label"):
+    """Standardizes the dataset and merges structural duplicates.
 
-    Cada SMILES passa pela mesma padronização do EX_027 (cleanup, fragmento pai, neutralização,
-    tautômero canônico). Linhas com o mesmo InChIKey padronizado são a mesma substância e viram
-    uma linha só:
+    Every SMILES goes through the same standardization (cleanup, fragment parent, uncharging,
+    canonical tautomer). Rows sharing a standardized InChIKey are the same substance and become
+    a single row:
 
-    * SMILES: o tautômero canônico padronizado da primeira ocorrência;
-    * rótulo: positivo se qualquer forma for positiva -- a mesma regra que a base já usa para
-      conflitos entre fontes;
-    * as demais colunas guardam a primeira ocorrência; ``n_formas`` diz quantas linhas foram
-      unidas e ``rotulo_conflitante`` marca as substâncias que tinham rótulos diferentes.
+    * SMILES: the standardized canonical tautomer of the first occurrence;
+    * label: positive if any form is positive -- the same rule the dataset already uses for
+      conflicts between sources;
+    * the other columns keep the first occurrence; ``n_forms`` says how many rows were merged
+      and ``conflicting_label`` marks the substances whose forms disagreed.
 
-    Moléculas que o RDKit não consegue ler são descartadas. Devolve a base padronizada, a
-    tabela de padronização por linha original e um resumo com as contagens.
+    Molecules RDKit cannot parse are dropped. Returns the standardized dataset, the
+    standardization table per original row, and a summary with the counts.
     """
-    base = base.reset_index(drop=True)
-    quimica = chemistry_table(base[coluna_smiles].astype(str).tolist())
-    quimica[coluna_rotulo] = base[coluna_rotulo].to_numpy()
-    validas = quimica["L5_inchikey"].notna()
+    dataset = dataset.reset_index(drop=True)
+    chemistry = chemistry_table(dataset[smiles_column].astype(str).tolist())
+    chemistry[label_column] = dataset[label_column].to_numpy()
+    valid = chemistry["L5_inchikey"].notna()
 
-    linhas = []
-    for chave, grupo in quimica[validas].groupby("L5_inchikey", sort=False):
-        primeira = grupo.index[0]
-        rotulos = grupo[coluna_rotulo]
-        linha = base.loc[primeira].to_dict()
-        linha.update({
-            "smiles_original": base.loc[primeira, coluna_smiles],
-            coluna_smiles: grupo.loc[primeira, "L4_tautomer"],
-            coluna_rotulo: int(rotulos.max()),
-            "inchikey": chave,
-            "n_formas": len(grupo),
-            "rotulo_conflitante": bool(rotulos.nunique() > 1),
+    rows = []
+    for key, group in chemistry[valid].groupby("L5_inchikey", sort=False):
+        first = group.index[0]
+        labels = group[label_column]
+        row = dataset.loc[first].to_dict()
+        row.update({
+            "smiles_original": dataset.loc[first, smiles_column],
+            smiles_column: group.loc[first, "L4_tautomer"],
+            label_column: int(labels.max()),
+            "inchikey": key,
+            "n_forms": len(group),
+            "conflicting_label": bool(labels.nunique() > 1),
         })
-        linhas.append(linha)
-    padronizada = pd.DataFrame(linhas)
+        rows.append(row)
+    standardized = pd.DataFrame(rows)
 
-    resumo = {
-        "linhas_originais": len(base),
-        "nao_lidas_pelo_rdkit": int((~validas).sum()),
-        "substancias_distintas": len(padronizada),
-        "linhas_removidas_como_duplicata": int(validas.sum() - len(padronizada)),
-        "grupos_com_duplicatas": int((padronizada["n_formas"] > 1).sum()),
-        "grupos_com_rotulo_conflitante": int(padronizada["rotulo_conflitante"].sum()),
-        "positivos_antes": int(base[coluna_rotulo].sum()),
-        "positivos_depois": int(padronizada[coluna_rotulo].sum()),
+    summary = {
+        "original_rows": len(dataset),
+        "unparsable_by_rdkit": int((~valid).sum()),
+        "distinct_substances": len(standardized),
+        "rows_merged_as_duplicates": int(valid.sum() - len(standardized)),
+        "groups_with_duplicates": int((standardized["n_forms"] > 1).sum()),
+        "groups_with_conflicting_label": int(standardized["conflicting_label"].sum()),
+        "positives_before": int(dataset[label_column].sum()),
+        "positives_after": int(standardized[label_column].sum()),
     }
-    return padronizada, quimica, resumo
+    return standardized, chemistry, summary
 
 
 # --------------------------------------------------------------------------------------
-# 2. Métricas no limiar fixo
+# 2. Metrics at a fixed threshold
 # --------------------------------------------------------------------------------------
 
-def metricas(y, proba, limiar=LIMIAR_PADRAO):
-    """As oito métricas do estudo para um vetor de probabilidades. As seis primeiras usam o corte
-    em ``limiar``; ROC-AUC e AP (área sob a curva precision-recall) não dependem de limiar."""
+def metrics(y, proba, threshold=DEFAULT_THRESHOLD):
+    """The eight metrics of the study for one probability vector. The first six use the cut at
+    ``threshold``; ROC-AUC and average precision do not depend on a threshold."""
     y = np.asarray(y)
     proba = np.asarray(proba)
-    pred = (proba >= limiar).astype(int)
-    duas_classes = len(np.unique(y)) > 1
+    pred = (proba >= threshold).astype(int)
+    two_classes = len(np.unique(y)) > 1
     return {
         "accuracy": accuracy_score(y, pred),
         "recall": recall_score(y, pred, zero_division=0),
@@ -115,250 +114,251 @@ def metricas(y, proba, limiar=LIMIAR_PADRAO):
         "f1": f1_score(y, pred, zero_division=0),
         "balanced_accuracy": balanced_accuracy_score(y, pred),
         "mcc": matthews_corrcoef(y, pred),
-        "roc_auc": roc_auc_score(y, proba) if duas_classes else np.nan,
-        "average_precision": average_precision_score(y, proba) if duas_classes else np.nan,
+        "roc_auc": roc_auc_score(y, proba) if two_classes else np.nan,
+        "average_precision": average_precision_score(y, proba) if two_classes else np.nan,
     }
 
 
-def recall_at_k(y, escores, k):
-    """Fração dos positivos que aparecem entre os ``k`` compostos de maior escore."""
+def recall_at_k(y, scores, k):
+    """Fraction of the positives that appear among the ``k`` highest-scoring compounds."""
     y = np.asarray(y)
     k = min(k, len(y))
-    topo = np.argsort(-np.asarray(escores), kind="mergesort")[:k]
-    return float(y[topo].sum() / y.sum()) if y.sum() else np.nan
+    top = np.argsort(-np.asarray(scores), kind="mergesort")[:k]
+    return float(y[top].sum() / y.sum()) if y.sum() else np.nan
 
 
-def metricas_triagem(y, escores, ks=K_TRIAGEM):
-    """Métricas de triagem, livres de limiar: Precision@K, Recall@K e BEDROC (alpha = 20)."""
-    saida = {"compostos": len(y), "positivos": int(np.sum(y)), "prevalência": float(np.mean(y))}
+def screening_metrics(y, scores, ks=SCREENING_K):
+    """Screening metrics, all threshold-free: Precision@K, Recall@K and BEDROC (alpha = 20)."""
+    output = {"compounds": len(y), "positives": int(np.sum(y)), "prevalence": float(np.mean(y))}
     for k in ks:
-        saida[f"Precision@{k}"] = precision_at_k(y, escores, k)
-        saida[f"Recall@{k}"] = recall_at_k(y, escores, k)
-    saida["BEDROC (α=20)"] = bedroc(y, escores, alpha=20.0)
-    return saida
+        output[f"Precision@{k}"] = precision_at_k(y, scores, k)
+        output[f"Recall@{k}"] = recall_at_k(y, scores, k)
+    output["BEDROC (α=20)"] = bedroc(y, scores, alpha=20.0)
+    return output
 
 
-def scaffolds_compartilhados(folds, grupos):
-    """Por fold, quantos grupos de scaffold aparecem no treino e no teste ao mesmo tempo."""
-    grupos = np.asarray(grupos)
+def shared_scaffolds(folds, groups):
+    """Per fold, how many scaffold groups appear in train and test at the same time."""
+    groups = np.asarray(groups)
     return pd.DataFrame([{"seed": seed, "fold": k,
-                          "scaffolds no teste": len(set(grupos[te])),
-                          "scaffolds em treino e teste": len(set(grupos[tr]) & set(grupos[te]))}
+                          "scaffolds in test": len(set(groups[te])),
+                          "scaffolds in train and test": len(set(groups[tr]) & set(groups[te]))}
                          for seed, k, tr, te in folds])
 
 
 # --------------------------------------------------------------------------------------
-# 3. Modelos individuais: CV interna aninhada por fold
+# 3. Individual models: nested inner CV per fold
 # --------------------------------------------------------------------------------------
 
-def folds_internos(y_treino, grupos_treino, protocolo, seed, n_splits=5):
-    """Folds internos da parte de treino, com o mesmo critério do fold externo."""
-    vazio = np.zeros(len(y_treino))
-    if protocolo == "scaffold":
+def inner_folds(y_train, train_groups, protocol, seed, n_splits=5):
+    """Inner folds of the training part, under the same criterion as the outer fold."""
+    empty = np.zeros(len(y_train))
+    if protocol == "scaffold":
         cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-        return list(cv.split(vazio, y_treino, groups=grupos_treino))
+        return list(cv.split(empty, y_train, groups=train_groups))
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-    return list(cv.split(vazio, y_treino))
+    return list(cv.split(empty, y_train))
 
 
-def ajustar_membro(X, y, tr, te, internos, C_grid, binario, n_jobs=1):
-    """Um modelo de uma representação em um fold externo.
+def fit_one_member(X, y, tr, te, inner_splits, C_grid, binary_, n_jobs=1):
+    """One representation fitted in one outer fold.
 
-    A CV interna (só com a parte de treino) escolhe C pelo ROC-AUC e devolve as
-    probabilidades out-of-fold internas, que alimentam os ensembles. O modelo final do fold é
-    treinado na parte de treino inteira e prevê treino e teste.
+    The inner CV, on the training part only, selects C by ROC-AUC and returns the inner
+    out-of-fold probabilities that feed the ensembles. The fold's model is then fitted on the
+    whole training part and predicts both train and test.
     """
-    interno = inner_oof_and_C(X[tr], y[tr], internos, C_grid, binary=binario, n_jobs=n_jobs)
-    modelo = build_pipeline(binary=binario, C=interno["C"]).fit(X[tr], y[tr])
-    return {"C": interno["C"], "inner_auc": interno["inner_auc"],
-            "inner_oof": interno["inner_oof"],
-            "train_proba": modelo.predict_proba(X[tr])[:, 1],
-            "test_proba": modelo.predict_proba(X[te])[:, 1]}
+    inner = inner_oof_and_C(X[tr], y[tr], inner_splits, C_grid, binary=binary_, n_jobs=n_jobs)
+    model = build_pipeline(binary=binary_, C=inner["C"]).fit(X[tr], y[tr])
+    return {"C": inner["C"], "inner_auc": inner["inner_auc"],
+            "inner_oof": inner["inner_oof"],
+            "train_proba": model.predict_proba(X[tr])[:, 1],
+            "test_proba": model.predict_proba(X[te])[:, 1]}
 
 
-def rodar_membros(X, y, folds, nomes, binarios, C_grid, checkpoints, protocolo,
-                  grupos=None, n_jobs=1, prefixo=None):
-    """Todos os modelos individuais de um protocolo, com checkpoint por (fold, representação).
+def fit_members(X, y, folds, names, binary_set, C_grid, checkpoints, protocol,
+                  groups=None, n_jobs=1, prefix=None):
+    """Every individual model of one protocol, checkpointed per (fold, representation).
 
-    ``prefixo`` separa os checkpoints de bases diferentes (padrão: o nome do protocolo).
+    ``prefix`` keeps the checkpoints of different datasets apart (default: the protocol name).
     """
-    registros = {}
+    records = {}
     for seed, k, tr, te in folds:
-        internos = folds_internos(y[tr], None if grupos is None else grupos[tr], protocolo, seed)
-        for nome in nomes:
-            chave = f"membro_{prefixo or protocolo}_seed{seed}_fold{k}_{nome}"
-            registros[(seed, k, nome)] = checkpoints.run_or_load(
-                chave,
-                lambda nome=nome: ajustar_membro(X[nome], y, tr, te, internos, C_grid,
-                                                 nome in binarios, n_jobs=n_jobs),
+        inner_splits = inner_folds(y[tr], None if groups is None else groups[tr], protocol, seed)
+        for name in names:
+            key = f"member_{prefix or protocol}_seed{seed}_fold{k}_{name}"
+            records[(seed, k, name)] = checkpoints.run_or_load(
+                key,
+                lambda name=name: fit_one_member(X[name], y, tr, te, inner_splits, C_grid,
+                                                 name in binary_set, n_jobs=n_jobs),
                 verbose=False)
-    return registros
+    return records
 
 
-def tabela_metricas(y, folds, probas, protocolo, base):
-    """Métricas de treino e teste por fold. ``probas[(seed, k, modelo)]`` tem as chaves
-    ``train_proba`` e ``test_proba``."""
-    linhas = []
-    for (seed, k, modelo), registro in probas.items():
+def metrics_table(y, folds, probas, protocol, dataset):
+    """Train and test metrics per fold. ``probas[(seed, k, model)]`` holds the keys
+    ``train_proba`` and ``test_proba``."""
+    rows = []
+    for (seed, k, model), record in probas.items():
         tr, te = folds[(seed, k)]
-        for parte, idx, chave in (("treino", tr, "train_proba"), ("teste", te, "test_proba")):
-            linhas.append({"base": base, "protocolo": protocolo, "modelo": modelo, "seed": seed, "fold": k,
-                           "parte": parte, **metricas(y[idx], registro[chave])})
-    return pd.DataFrame(linhas)
+        for part, idx, key in (("train", tr, "train_proba"), ("test", te, "test_proba")):
+            rows.append({"dataset": dataset, "protocol": protocol, "model": model, "seed": seed, "fold": k,
+                           "part": part, **metrics(y[idx], record[key])})
+    return pd.DataFrame(rows)
 
 
-def media_por_modelo(tabela):
-    """Média e desvio-padrão das 15 folds, por base, protocolo, modelo e parte."""
-    agregado = tabela.groupby(["base", "protocolo", "modelo", "parte"])[METRICAS].agg(["mean", "std"])
-    agregado.columns = [f"{m}_{estatistica}" for m, estatistica in agregado.columns]
-    return agregado.reset_index()
+def mean_by_model(table):
+    """Mean and standard deviation over the 15 folds, by dataset, protocol, model and part."""
+    aggregated = table.groupby(["dataset", "protocol", "model", "part"])[METRICS].agg(["mean", "std"])
+    aggregated.columns = [f"{m}_{statistic}" for m, statistic in aggregated.columns]
+    return aggregated.reset_index()
 
 
-def media_dp(media, desvio, casas=4):
-    """Texto "média ± desvio-padrão". Aceita escalares ou Series com o mesmo índice."""
-    if isinstance(media, pd.Series):
-        return pd.Series([media_dp(m, d, casas) for m, d in zip(media, desvio.loc[media.index])],
-                         index=media.index)
-    return f"{media:.{casas}f} ± {desvio:.{casas}f}"
+def mean_sd(mean_, sd_, places=4):
+    """The text "mean ± sd". Accepts scalars or Series sharing an index."""
+    if isinstance(mean_, pd.Series):
+        return pd.Series([mean_sd(m, d, places) for m, d in zip(mean_, sd_.loc[mean_.index])],
+                         index=mean_.index)
+    return f"{mean_:.{places}f} ± {sd_:.{places}f}"
 
 
-def formatar_dp(tabela, casas=4):
-    """Junta cada coluna ``X`` com a sua ``X dp`` em um texto "média ± desvio-padrão"."""
-    saida = tabela.copy()
-    for coluna in [c for c in tabela.columns if f"{c} dp" in tabela.columns]:
-        saida[coluna] = media_dp(tabela[coluna], tabela[f"{coluna} dp"], casas)
-    return saida.drop(columns=[c for c in tabela.columns if str(c).endswith(" dp")])
+def format_sd(table, places=4):
+    """Joins each column ``X`` with its ``X sd`` into a single "mean ± sd" text."""
+    output = table.copy()
+    for column in [c for c in table.columns if f"{c} sd" in table.columns]:
+        output[column] = mean_sd(table[column], table[f"{column} sd"], places)
+    return output.drop(columns=[c for c in table.columns if str(c).endswith(" sd")])
 
 
-def comparar(media, coluna, a, b, metricas_=("f1", "roc_auc"), parte="teste"):
-    """Média e desvio-padrão das 15 folds de cada modelo em dois valores de ``coluna``
-    (protocolo ou base), lado a lado, e a diferença ``b - a``. ``media`` vem de
-    ``media_por_modelo`` já filtrada no outro eixo. As folds dos dois lados não são pareadas,
-    então o desvio do Δ é a combinação dos dois desvios, √(dp_a² + dp_b²)."""
-    selecionada = media[media["parte"] == parte]
-    saida = {}
-    for m in metricas_:
-        largo = selecionada.pivot(index="modelo", columns=coluna, values=f"{m}_mean")
-        desvio = selecionada.pivot(index="modelo", columns=coluna, values=f"{m}_std")
-        nome = NOMES_METRICAS[m]
-        saida[f"{nome} ({a})"] = largo[a]
-        saida[f"{nome} ({a}) dp"] = desvio[a]
-        saida[f"{nome} ({b})"] = largo[b]
-        saida[f"{nome} ({b}) dp"] = desvio[b]
-        saida[f"Δ {nome} ({b} − {a})"] = largo[b] - largo[a]
-        saida[f"Δ {nome} ({b} − {a}) dp"] = np.sqrt(desvio[a] ** 2 + desvio[b] ** 2)
-    return pd.DataFrame(saida)
+def compare(mean_, column, a, b, metrics_=("f1", "roc_auc"), part="test"):
+    """Mean and sd over the 15 folds of every model at two values of ``column`` (protocol or
+    dataset), side by side, and the difference ``b - a``. ``mean_`` comes from ``mean_by_model``
+    already filtered on the other axis. The folds of the two sides are not paired, so the sd of
+    Δ is the combination of both, √(sd_a² + sd_b²)."""
+    selected_rows = mean_[mean_["part"] == part]
+    output = {}
+    for m in metrics_:
+        wide = selected_rows.pivot(index="model", columns=column, values=f"{m}_mean")
+        sd_ = selected_rows.pivot(index="model", columns=column, values=f"{m}_std")
+        name = METRIC_NAMES[m]
+        output[f"{name} ({a})"] = wide[a]
+        output[f"{name} ({a}) sd"] = sd_[a]
+        output[f"{name} ({b})"] = wide[b]
+        output[f"{name} ({b}) sd"] = sd_[b]
+        output[f"Δ {name} ({b} − {a})"] = wide[b] - wide[a]
+        output[f"Δ {name} ({b} − {a}) sd"] = np.sqrt(sd_[a] ** 2 + sd_[b] ** 2)
+    return pd.DataFrame(output)
 
 
 # --------------------------------------------------------------------------------------
-# 4. Ensembles e seleção gulosa, decididos só com a parte de treino do fold
+# 4. Ensembles and greedy selection, decided from the training part of the fold alone
 # --------------------------------------------------------------------------------------
 
-def selecao_gulosa(matriz_interna, y_treino, nomes, limiar=LIMIAR_PADRAO):
-    """Seleção gulosa (forward) para soft voting, maximizando o F1 no limiar fixo.
+def greedy_selection(inner_matrix, y_train, names, threshold=DEFAULT_THRESHOLD):
+    """Greedy forward selection for soft voting, maximizing F1 at the fixed threshold.
 
-    A cada passo entra a representação que, somada às já escolhidas, dá o maior F1 da média
-    das probabilidades out-of-fold internas. Fica o melhor passo do caminho; em empate, o
-    subconjunto menor. Usa só a parte de treino do fold.
+    At each step it adds the representation that, together with those already chosen, gives the
+    highest F1 of the averaged inner out-of-fold probabilities. The best step along the path is
+    kept; ties go to the smaller subset. Uses the training part of the fold only.
     """
-    colunas = {nome: matriz_interna[:, j] for j, nome in enumerate(nomes)}
-    restantes, escolhidos, caminho = list(nomes), [], []
-    while restantes:
-        avaliados = []
-        for candidato in restantes:
-            media = np.mean([colunas[m] for m in escolhidos + [candidato]], axis=0)
-            avaliados.append((f1_score(y_treino, (media >= limiar).astype(int), zero_division=0),
-                              candidato))
-        f1, candidato = max(avaliados, key=lambda par: par[0])
-        escolhidos.append(candidato)
-        restantes.remove(candidato)
-        caminho.append({"n_membros": len(escolhidos), "adicionado": candidato,
-                        "membros": tuple(escolhidos), "f1_interno": float(f1)})
-    melhor = max(caminho, key=lambda passo: (passo["f1_interno"], -passo["n_membros"]))
-    return list(melhor["membros"]), pd.DataFrame(caminho)
+    columns = {name: inner_matrix[:, j] for j, name in enumerate(names)}
+    remaining, chosen, path = list(names), [], []
+    while remaining:
+        scored = []
+        for candidate in remaining:
+            mean_ = np.mean([columns[m] for m in chosen + [candidate]], axis=0)
+            scored.append((f1_score(y_train, (mean_ >= threshold).astype(int), zero_division=0),
+                              candidate))
+        f1, candidate = max(scored, key=lambda pair: pair[0])
+        chosen.append(candidate)
+        remaining.remove(candidate)
+        path.append({"n_members": len(chosen), "added": candidate,
+                        "members": tuple(chosen), "f1_inner": float(f1)})
+    best = max(path, key=lambda step: (step["f1_inner"], -step["n_members"]))
+    return list(best["members"]), pd.DataFrame(path)
 
 
-def meta_modelo(random_state=RANDOM_STATE):
-    """Meta-modelo do stacking: regressão logística L2 sobre as 20 probabilidades."""
+def fit_meta_model(random_state=RANDOM_STATE):
+    """The stacking meta-model: L2 logistic regression over the member probabilities."""
     return LogisticRegression(C=1.0, max_iter=5000, class_weight="balanced",
                               random_state=random_state)
 
 
-def ensembles_do_fold(y, tr, registros_fold, nomes, seed):
-    """Os quatro ensembles de um fold externo.
+def fold_ensembles(y, tr, fold_records, names, seed):
+    """The four ensembles of one outer fold.
 
-    Para cada ensemble devolve as probabilidades em treino e teste e um escore interno (sobre
-    a parte de treino, sem olhar o teste) usado depois para escolher limiar:
+    For each ensemble it returns the train and test probabilities plus an inner score, computed
+    on the training part without looking at the test fold, later used to pick a threshold:
 
-    * soft voting: média das 20 probabilidades;
-    * soft voting ponderado: média ponderada pelo ROC-AUC interno de cada membro;
-    * stacking: meta-modelo treinado nas probabilidades out-of-fold internas dos membros;
-    * seleção gulosa: soft voting do subconjunto escolhido nas probabilidades internas.
+    * soft voting: the mean of the member probabilities;
+    * weighted soft voting: that mean weighted by each member's inner ROC-AUC;
+    * stacking: a meta-model fitted on the members' inner out-of-fold probabilities;
+    * greedy selection: soft voting over the subset chosen on the inner probabilities.
     """
-    interna = np.column_stack([registros_fold[n]["inner_oof"] for n in nomes])
-    treino = np.column_stack([registros_fold[n]["train_proba"] for n in nomes])
-    teste = np.column_stack([registros_fold[n]["test_proba"] for n in nomes])
+    inner_oof_matrix = np.column_stack([fold_records[n]["inner_oof"] for n in names])
+    train_ = np.column_stack([fold_records[n]["train_proba"] for n in names])
+    test_ = np.column_stack([fold_records[n]["test_proba"] for n in names])
     y_tr = y[tr]
 
-    pesos = np.array([registros_fold[n]["inner_auc"] for n in nomes])
-    pesos = pesos / pesos.sum()
+    weights = np.array([fold_records[n]["inner_auc"] for n in names])
+    weights = weights / weights.sum()
 
-    meta = meta_modelo().fit(interna, y_tr)
+    meta = fit_meta_model().fit(inner_oof_matrix, y_tr)
     cv_meta = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    meta_interno = cross_val_predict(clone(meta_modelo()), interna, y_tr, cv=cv_meta,
+    meta_inner = cross_val_predict(clone(fit_meta_model()), inner_oof_matrix, y_tr, cv=cv_meta,
                                      method="predict_proba")[:, 1]
 
-    subconjunto, caminho = selecao_gulosa(interna, y_tr, nomes)
-    colunas = [nomes.index(n) for n in subconjunto]
+    subset, path = greedy_selection(inner_oof_matrix, y_tr, names)
+    columns = [names.index(n) for n in subset]
 
     return {
-        "Soft voting": {"train_proba": treino.mean(axis=1), "test_proba": teste.mean(axis=1),
-                        "inner_score": interna.mean(axis=1)},
-        "Soft voting ponderado (ROC-AUC)": {
-            "train_proba": treino @ pesos, "test_proba": teste @ pesos,
-            "inner_score": interna @ pesos, "pesos": dict(zip(nomes, pesos))},
-        "Stacking": {"train_proba": meta.predict_proba(treino)[:, 1],
-                     "test_proba": meta.predict_proba(teste)[:, 1],
-                     "inner_score": meta_interno,
-                     "coeficientes": dict(zip(nomes, meta.coef_.ravel()))},
-        "Seleção gulosa": {"train_proba": treino[:, colunas].mean(axis=1),
-                           "test_proba": teste[:, colunas].mean(axis=1),
-                           "inner_score": interna[:, colunas].mean(axis=1),
-                           "membros": subconjunto, "caminho": caminho},
+        "Soft voting": {"train_proba": train_.mean(axis=1), "test_proba": test_.mean(axis=1),
+                        "inner_score": inner_oof_matrix.mean(axis=1)},
+        "Weighted soft voting (ROC-AUC)": {
+            "train_proba": train_ @ weights, "test_proba": test_ @ weights,
+            "inner_score": inner_oof_matrix @ weights, "weights": dict(zip(names, weights))},
+        "Stacking": {"train_proba": meta.predict_proba(train_)[:, 1],
+                     "test_proba": meta.predict_proba(test_)[:, 1],
+                     "inner_score": meta_inner,
+                     "coefficients": dict(zip(names, meta.coef_.ravel()))},
+        "Greedy (F1)": {"train_proba": train_[:, columns].mean(axis=1),
+                           "test_proba": test_[:, columns].mean(axis=1),
+                           "inner_score": inner_oof_matrix[:, columns].mean(axis=1),
+                           "members": subset, "path": path},
     }
 
 
-def frequencia_selecao(ensembles, nomes):
-    """Em quantos folds cada representação entrou na seleção gulosa."""
-    contagem = {n: 0 for n in nomes}
+def selection_frequency(ensembles, names):
+    """In how many folds each representation entered the greedy ensemble."""
+    counts = {n: 0 for n in names}
     total = 0
-    for (seed, k, modelo), registro in ensembles.items():
-        if modelo == "Seleção gulosa":
+    for (seed, k, model), record in ensembles.items():
+        if model == "Greedy (F1)":
             total += 1
-            for n in registro["membros"]:
-                contagem[n] += 1
-    return (pd.Series(contagem, name="folds").sort_values(ascending=False).to_frame()
-            .assign(frequencia=lambda d: d["folds"] / total))
+            for n in record["members"]:
+                counts[n] += 1
+    return (pd.Series(counts, name="folds").sort_values(ascending=False).to_frame()
+            .assign(frequency=lambda d: d["folds"] / total))
 
 
 # --------------------------------------------------------------------------------------
-# 5. Diversidade
+# 5. Diversity
 # --------------------------------------------------------------------------------------
 
-def acertos_oof(y, folds, registros, nomes, seed, limiar=LIMIAR_PADRAO):
-    """Vetor de acertos (no limiar fixo) de cada membro, montado com as predições de teste de
-    uma repetição: cada composto é previsto uma vez, pelo modelo que não o viu."""
+def oof_hits(y, folds, records, names, seed, threshold=DEFAULT_THRESHOLD):
+    """Hit/miss vector (at the fixed threshold) of each member, assembled from the test
+    predictions of one repetition: every compound is predicted once, by a model that has not
+    seen it."""
     y = np.asarray(y)
-    proba = {n: np.full(len(y), np.nan) for n in nomes}
+    proba = {n: np.full(len(y), np.nan) for n in names}
     for (s, k), (tr, te) in folds.items():
         if s != seed:
             continue
-        for n in nomes:
-            proba[n][te] = registros[(s, k, n)]["test_proba"]
-    return {n: (proba[n] >= limiar).astype(int) == y for n in nomes}
+        for n in names:
+            proba[n][te] = records[(s, k, n)]["test_proba"]
+    return {n: (proba[n] >= threshold).astype(int) == y for n in names}
 
 
-MEDIDAS_DIVERSIDADE = {
+DIVERSITY_MEASURES = {
     "Double-fault": double_fault_measure,
     "Q-statistic": q_statistic,
     "Disagreement": disagreement_measure,
@@ -367,98 +367,100 @@ MEDIDAS_DIVERSIDADE = {
 
 
 # --------------------------------------------------------------------------------------
-# 6. Estudo do limiar
+# 6. Threshold sweep
 # --------------------------------------------------------------------------------------
 
-def estudo_limiar(y, folds, probas, grade=GRADE_LIMIAR):
-    """Curvas de F1 médio por limiar, no OOF interno e no teste, e o limiar escolhido.
+def threshold_sweep(y, folds, probas, grid=THRESHOLD_GRID):
+    """Mean-F1 curves per threshold, on the inner out-of-fold scores and on test, plus the
+    selected threshold.
 
-    ``probas[(seed, k)]`` tem ``test_proba`` e ``inner_score``. O limiar é um só por modelo: o
-    pico da curva OOF média das 15 folds. O teste não entra na escolha, mas o OOF de uma fold
-    vem de um treino que contém compostos de teste de outras folds, então há um vazamento leve
-    (um único escalar). A curva de teste é só para visualização. Devolve o F1 por fold e limiar,
-    as curvas (média e desvio-padrão das 15 folds) e o limiar escolhido.
+    ``probas[(seed, k)]`` holds ``test_proba`` and ``inner_score``. There is one threshold per
+    model: the peak of the mean out-of-fold curve over the 15 folds. The test fold never enters
+    the choice, but the out-of-fold scores of one fold come from a training set containing test
+    compounds of other folds, so there is mild leakage (a single scalar). The test curve is for
+    display only. Returns the F1 per fold and threshold, the curves (mean and sd over the 15
+    folds) and the selected threshold.
     """
-    linhas = []
-    for (seed, k), registro in probas.items():
+    rows = []
+    for (seed, k), record in probas.items():
         tr, te = folds[(seed, k)]
-        for limiar in grade:
-            linhas.append({
-                "seed": seed, "fold": k, "limiar": limiar,
-                "f1_oof": f1_score(y[tr], (registro["inner_score"] >= limiar).astype(int),
+        for threshold in grid:
+            rows.append({
+                "seed": seed, "fold": k, "threshold": threshold,
+                "f1_oof": f1_score(y[tr], (record["inner_score"] >= threshold).astype(int),
                                    zero_division=0),
-                "f1_teste": f1_score(y[te], (registro["test_proba"] >= limiar).astype(int),
+                "f1_test": f1_score(y[te], (record["test_proba"] >= threshold).astype(int),
                                      zero_division=0)})
-    por_fold = pd.DataFrame(linhas)
-    curvas = por_fold.groupby("limiar")[["f1_oof", "f1_teste"]].agg(["mean", "std"])
-    curvas.columns = [f"{c}_{estatistica}" for c, estatistica in curvas.columns]
-    return por_fold, curvas, float(curvas["f1_oof_mean"].idxmax())
+    per_fold = pd.DataFrame(rows)
+    curves = per_fold.groupby("threshold")[["f1_oof", "f1_test"]].agg(["mean", "std"])
+    curves.columns = [f"{c}_{statistic}" for c, statistic in curves.columns]
+    return per_fold, curves, float(curves["f1_oof_mean"].idxmax())
 
 
 # --------------------------------------------------------------------------------------
-# 7. Modelos finais com a base inteira
+# 7. Final models on the whole dataset
 # --------------------------------------------------------------------------------------
 
-def treinar_finais(X, y, nomes, binarios, C_grid, grupos, seed=RANDOM_STATE, n_jobs=1):
-    """Modelos individuais e ensembles treinados com todos os dados.
+def fit_final_models(X, y, names, binary_set, C_grid, groups, seed=RANDOM_STATE, n_jobs=1):
+    """Individual models and ensembles fitted on all the data.
 
-    C de cada representação e as probabilidades out-of-fold que alimentam pesos, meta-modelo
-    e seleção gulosa vêm de uma CV de 5 folds por scaffold sobre a base inteira.
+    The C of each representation and the out-of-fold probabilities that feed the weights, the
+    meta-model and the greedy subset come from a 5-fold scaffold CV over the whole dataset.
     """
     y = np.asarray(y)
-    internos = folds_internos(y, grupos, "scaffold", seed)
-    individuais, oof, auc = {}, {}, {}
-    for nome in nomes:
-        interno = inner_oof_and_C(X[nome], y, internos, C_grid, binary=nome in binarios,
+    inner_splits = inner_folds(y, groups, "scaffold", seed)
+    fitted_members, oof, auc = {}, {}, {}
+    for name in names:
+        inner = inner_oof_and_C(X[name], y, inner_splits, C_grid, binary=name in binary_set,
                                   n_jobs=n_jobs)
-        individuais[nome] = build_pipeline(binary=nome in binarios,
-                                           C=interno["C"]).fit(X[nome], y)
-        oof[nome], auc[nome] = interno["inner_oof"], interno["inner_auc"]
-    matriz = np.column_stack([oof[n] for n in nomes])
-    pesos = np.array([auc[n] for n in nomes])
-    subconjunto, caminho = selecao_gulosa(matriz, y, nomes)
+        fitted_members[name] = build_pipeline(binary=name in binary_set,
+                                           C=inner["C"]).fit(X[name], y)
+        oof[name], auc[name] = inner["inner_oof"], inner["inner_auc"]
+    matrix = np.column_stack([oof[n] for n in names])
+    weights = np.array([auc[n] for n in names])
+    subset, path = greedy_selection(matrix, y, names)
     return {
-        "individuais": individuais,
-        "C": {n: individuais[n].named_steps["clf"].C for n in nomes},
-        "pesos_roc_auc": dict(zip(nomes, pesos / pesos.sum())),
-        "meta_modelo": meta_modelo().fit(matriz, y),
-        "membros_gulosos": subconjunto,
-        "caminho_guloso": caminho,
-        "nomes": list(nomes),
+        "members": fitted_members,
+        "C": {n: fitted_members[n].named_steps["clf"].C for n in names},
+        "roc_auc_weights": dict(zip(names, weights / weights.sum())),
+        "meta_model": fit_meta_model().fit(matrix, y),
+        "greedy_members": subset,
+        "greedy_path": path,
+        "names": list(names),
     }
 
 
-def encoders_do_modelo(finais, modelo):
-    """Representações de que um modelo final precisa para prever."""
-    if modelo == "Seleção gulosa":
-        return list(finais["membros_gulosos"])
-    if modelo in ENSEMBLES:
-        return list(finais["nomes"])
-    return [modelo]
+def encoders_of_model(final, model):
+    """The representations a final model needs in order to predict."""
+    if model == "Greedy (F1)":
+        return list(final["greedy_members"])
+    if model in ENSEMBLES:
+        return list(final["names"])
+    return [model]
 
 
-def prever_modelo(finais, X, modelo):
-    """Probabilidades de um modelo final (individual ou ensemble) para novos compostos.
+def predict_with_model(final, X, model):
+    """Probabilities of one final model (individual or ensemble) for new compounds.
 
-    ``X`` precisa ter só as representações de ``encoders_do_modelo``."""
-    nomes = encoders_do_modelo(finais, modelo)
-    matriz = np.column_stack([finais["individuais"][n].predict_proba(X[n])[:, 1] for n in nomes])
-    if modelo == "Soft voting ponderado (ROC-AUC)":
-        return matriz @ np.array([finais["pesos_roc_auc"][n] for n in nomes])
-    if modelo == "Stacking":
-        return finais["meta_modelo"].predict_proba(matriz)[:, 1]
-    return matriz.mean(axis=1)
+    ``X`` only needs the representations listed by ``encoders_of_model``."""
+    names = encoders_of_model(final, model)
+    matrix = np.column_stack([final["members"][n].predict_proba(X[n])[:, 1] for n in names])
+    if model == "Weighted soft voting (ROC-AUC)":
+        return matrix @ np.array([final["roc_auc_weights"][n] for n in names])
+    if model == "Stacking":
+        return final["meta_model"].predict_proba(matrix)[:, 1]
+    return matrix.mean(axis=1)
 
 
-def prever_finais(finais, X):
-    """Probabilidades dos modelos finais para novos compostos (dicionário de embeddings)."""
-    nomes = finais["nomes"]
-    matriz = np.column_stack([finais["individuais"][n].predict_proba(X[n])[:, 1] for n in nomes])
-    pesos = np.array([finais["pesos_roc_auc"][n] for n in nomes])
-    colunas = [nomes.index(n) for n in finais["membros_gulosos"]]
-    saida = pd.DataFrame(matriz, columns=nomes)
-    saida["Soft voting"] = matriz.mean(axis=1)
-    saida["Soft voting ponderado (ROC-AUC)"] = matriz @ pesos
-    saida["Stacking"] = finais["meta_modelo"].predict_proba(matriz)[:, 1]
-    saida["Seleção gulosa"] = matriz[:, colunas].mean(axis=1)
-    return saida
+def predict_with_final_models(final, X):
+    """Probabilities of every final model for new compounds (a dict of embeddings)."""
+    names = final["names"]
+    matrix = np.column_stack([final["members"][n].predict_proba(X[n])[:, 1] for n in names])
+    weights = np.array([final["roc_auc_weights"][n] for n in names])
+    columns = [names.index(n) for n in final["greedy_members"]]
+    output = pd.DataFrame(matrix, columns=names)
+    output["Soft voting"] = matrix.mean(axis=1)
+    output["Weighted soft voting (ROC-AUC)"] = matrix @ weights
+    output["Stacking"] = final["meta_model"].predict_proba(matrix)[:, 1]
+    output["Greedy (F1)"] = matrix[:, columns].mean(axis=1)
+    return output

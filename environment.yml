@@ -1,13 +1,11 @@
-# Ambiente do kernel dos notebooks: padronização química, regressão logística, ensembles e a
-# leitura dos embeddings já gerados. São só os pacotes que o código importa de fato — as
-# dependências transitivas ficam para o resolvedor, e as versões exatas em uso saem de
-# `pip freeze` no .venv da pasta.
+# Environment for the notebook kernel: chemical standardization, logistic regression, ensembles
+# and reading the embeddings that are already on disk. Only the packages the code actually
+# imports are listed; transitive dependencies are left to the resolver, and the exact versions
+# in use can be read with `pip freeze`.
 #
-# Os encoders NÃO entram aqui. torch, transformers, torch_geometric, gensim, selfies e
-# unimol_tools não cabem no kernel e rodam num env conda à parte, `embeddings`, que
-# notebooks/geracao_embeddings.ipynb cria sozinho a partir de REQUISITOS_EMBEDDINGS.
-# O EX_034 (Qwen3.5 + LoRA) também tem ambiente próprio, no DGX Spark, documentado na seção 1
-# do notebook dele: torch com wheel cu132, que é específico daquela GPU.
+# The encoders are NOT here. torch, transformers, torch_geometric, gensim, selfies and
+# unimol_tools do not fit in this kernel and run in a separate conda environment named
+# `embeddings`, which notebooks/embeddings_generation.ipynb creates on its own.
 name: PIBIC_Luiggy
 channels:
   - conda-forge
@@ -15,19 +13,19 @@ dependencies:
   - python=3.15
   - pip
   - pip:
-      # Núcleo numérico e modelagem.
+      # Numerical core and modelling.
       - numpy==2.5.5
       - pandas==3.1.1
       - scipy==1.18.1
       - scikit-learn==1.9.1
       - joblib==1.6.0
       - matplotlib==3.11.2
-      # Química: padronização (rdMolStandardize), scaffolds de Bemis-Murcko e fingerprints.
+      # Chemistry: standardization (rdMolStandardize), Bemis-Murcko scaffolds, fingerprints.
       - rdkit==2026.9.2
-      # Não é importado em lugar nenhum, e é obrigatório: ex032_modelos_finais.joblib guarda um
-      # DataFrame com coluna de strings arrow-backed, e sem pyarrow o joblib.load falha com
+      # Imported nowhere, and required anyway: the stored final models hold a DataFrame with an
+      # arrow-backed string column, and without pyarrow joblib.load fails with
       # ModuleNotFoundError.
       - pyarrow==26.0.1
-      # Kernel dos notebooks; IPython.display.display é usado nas células de saída.
+      # The notebook kernel; IPython.display.display is used in the output cells.
       - ipykernel==7.4.0
       - ipython==9.18.1

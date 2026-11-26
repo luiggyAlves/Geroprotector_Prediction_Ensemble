@@ -1,21 +1,20 @@
-"""Funções do EX_033.
+"""The analyses that address five of the limitations discussed in the write-up.
 
-O EX_033 é o EX_032 com as limitações do artigo endereçadas. Nada do protocolo muda: os
-mesmos 18 encoders, as mesmas 15 folds e os mesmos checkpoints dos 1.080 membros são
-reaproveitados. O que entra é:
+Nothing in the protocol changes: the same 18 encoders, the same 15 folds and the same 1,080
+member checkpoints are reused. What this module adds:
 
-* **Stacking calibrado** (limitação vi): calibração isotônica e de Platt ajustadas dentro do
-  fold, sobre as probabilidades out-of-fold internas do meta-modelo.
-* **Seleção gulosa por PR-AUC** (limitação v): critério sem limiar, que tira a circularidade
-  entre a escolha dos membros e o estudo do limiar.
-* **Bootstrap por scaffold e teste pareado** (limitação i): intervalos de confiança e
-  comparações, reaproveitando o `ex027_utils`.
-* **Colapso por InChIKey** (limitação iii): reavalia as predições da base não padronizada com
-  uma predição por substância, para testar se a queda da padronização é efeito de contagem.
-* **Ablação dos conflitos de rótulo** (limitação iv): as três políticas (positivo, removido,
-  negativo) para as 82 substâncias que a fusão por InChIKey deixou com rótulos divergentes.
+* **Calibrated stacking** (limitation vi): isotonic and Platt calibration fitted inside the
+  fold, on the meta-model's own inner out-of-fold probabilities.
+* **Greedy selection by average precision** (limitation v): a threshold-free criterion, which
+  removes the circularity between member selection and the threshold study.
+* **Scaffold bootstrap and paired tests** (limitation i): confidence intervals and comparisons,
+  built on the bootstrap helpers in `core_utils`.
+* **InChIKey collapse** (limitation iii): rescores the unstandardized predictions with one
+  prediction per substance, to test whether the standardization drop is a counting effect.
+* **Label-conflict ablation** (limitation iv): the three policies (positive, removed, negative)
+  for the 82 substances whose forms disagreed on the label after the InChIKey merge.
 
-Reaproveita do ex032_utils todo o pipeline e do ex027_utils as funções de bootstrap.
+The whole pipeline comes from protocol_utils and the bootstrap functions from core_utils.
 """
 from __future__ import annotations
 
@@ -28,328 +27,331 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, f1_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
-from ex027_utils import (all_metrics, corrected_resampled_ttest,  # noqa: F401
+from core_utils import (all_metrics, corrected_resampled_ttest,  # noqa: F401
                          group_bootstrap_ci, group_bootstrap_indices,
                          paired_group_bootstrap)
-from ex032_utils import (ENSEMBLES, GRADE_LIMIAR, K_TRIAGEM, LIMIAR_PADRAO,  # noqa: F401
-                         MEDIDAS_DIVERSIDADE, METRICAS, NOMES_METRICAS, RANDOM_STATE,
-                         Checkpoints, acertos_oof, bedroc, build_pipeline, chemistry_table,
-                         comparar, correlation_measure, disagreement_measure,
-                         double_fault_measure, duplicate_audit, encoders_do_modelo,
-                         estudo_limiar, external_cuts, folds_internos, formatar_dp,
-                         inner_oof_and_C, log_external_read, media_dp, media_por_modelo,
-                         metricas, metricas_triagem, padronizar_base, pairwise_matrix,
-                         precision_at_k, prever_finais, prever_modelo, q_statistic,
+from protocol_utils import (ENSEMBLES, THRESHOLD_GRID, SCREENING_K, DEFAULT_THRESHOLD,  # noqa: F401
+                         DIVERSITY_MEASURES, METRICS, METRIC_NAMES, RANDOM_STATE,
+                         Checkpoints, oof_hits, bedroc, build_pipeline, chemistry_table,
+                         compare, correlation_measure, disagreement_measure,
+                         double_fault_measure, duplicate_audit, encoders_of_model,
+                         threshold_sweep, external_cuts, inner_folds, format_sd,
+                         inner_oof_and_C, log_external_read, mean_sd, mean_by_model,
+                         metrics, screening_metrics, standardize_dataset, pairwise_matrix,
+                         precision_at_k, predict_with_final_models, predict_with_model, q_statistic,
                          recall_at_k, repeated_random_folds, repeated_scaffold_folds,
-                         rodar_membros, scaffolds_compartilhados, selecao_gulosa,
-                         tabela_metricas, treinar_finais)
+                         fit_members, shared_scaffolds, greedy_selection,
+                         metrics_table, fit_final_models)
 
-# Os ensembles do EX_033: os quatro do EX_032 mais os dois stackings calibrados e a seleção
-# gulosa por PR-AUC. "Seleção gulosa" continua sendo a do EX_032 (F1 no limiar 0,5).
-ENSEMBLES_NOVOS = ["Stacking (isotônica)", "Stacking (Platt)", "Seleção gulosa (PR-AUC)"]
-ENSEMBLES_033 = list(ENSEMBLES) + ENSEMBLES_NOVOS
+# The full ensemble set: the four original ones plus the two calibrated stackings and the
+# average-precision greedy selection. "Greedy (F1)" remains the F1-at-0.5 variant.
+LATER_ENSEMBLES = ["Stacking (isotonic)", "Stacking (Platt)", "Greedy (AP)"]
+ALL_ENSEMBLES = list(ENSEMBLES) + LATER_ENSEMBLES
 
-POLITICAS_CONFLITO = ["positivo", "removido", "negativo"]
+CONFLICT_POLICIES = ["positive", "removed", "negative"]
 
-# Grade larga para o limiar escolhido dentro do fold. A grade do EX_032 (0,40 a 0,60) só serve
-# para modelos cujas probabilidades já estão perto de 0,5; um modelo calibrado com prevalência
-# de 17% tem o ótimo bem abaixo disso.
-GRADE_LIMIAR_LARGA = np.round(np.arange(0.05, 0.9501, 0.01), 2)
+# Wide grid for the threshold chosen inside the fold. The 0.40-0.60 grid only suits models
+# whose probabilities already sit near 0.5; a calibrated model at 17% prevalence has its
+# optimum far below that.
+WIDE_THRESHOLD_GRID = np.round(np.arange(0.05, 0.9501, 0.01), 2)
 
 
 # --------------------------------------------------------------------------------------
-# 1. Stacking calibrado (limitação vi)
+# 1. Calibrated stacking (limitation vi)
 # --------------------------------------------------------------------------------------
 
-def meta_modelo(random_state=RANDOM_STATE):
-    """Meta-modelo do stacking: regressão logística L2 sobre as probabilidades dos membros."""
+def fit_meta_model(random_state=RANDOM_STATE):
+    """The stacking meta-model: L2 logistic regression over the member probabilities."""
     return LogisticRegression(C=1.0, max_iter=5000, class_weight="balanced",
                               random_state=random_state)
 
 
-def calibrar(escore_interno, y_treino, metodo):
-    """Calibrador ajustado nas probabilidades out-of-fold internas do meta-modelo.
+def calibrate(inner_score_, y_train, method):
+    """A calibrator fitted on the meta-model's inner out-of-fold probabilities.
 
-    O meta-modelo usa ``class_weight="balanced"``, o que desloca as probabilidades para cima:
-    no limiar 0,5 ele classifica positivo demais, com recall alto e precision baixa. O
-    calibrador aprende a transformação monótona que leva o escore de volta a uma probabilidade,
-    e é ajustado só com a parte de treino (nas predições internas, que o meta-modelo final não
-    viu durante o ajuste de cada subfold).
+    The meta-model uses ``class_weight="balanced"``, which shifts its probabilities upward: at
+    threshold 0.5 it calls positive too often, with high recall and low precision. The
+    calibrator learns the monotone map that turns the score back into a probability, and is
+    fitted on the training part alone (on the inner predictions, which the final meta-model did
+    not see while each subfold was fitted).
 
-    * ``"isotonica"``: regressão isotônica, flexível e sem forma funcional;
-    * ``"platt"``: regressão logística de uma variável (escala sigmoide).
+    * ``"isotonic"``: isotonic regression, flexible and with no functional form;
+    * ``"platt"``: one-variable logistic regression (a sigmoid scale).
 
-    Devolve uma função que aplica a calibração a um vetor de escores.
+    Returns a function that applies the calibration to a vector of scores.
     """
-    escore_interno = np.asarray(escore_interno, dtype=float)
-    y_treino = np.asarray(y_treino)
-    if metodo == "isotonica":
-        modelo = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
-        modelo.fit(escore_interno, y_treino)
-        return lambda escores: np.clip(modelo.predict(np.asarray(escores, dtype=float)), 0, 1)
-    if metodo == "platt":
-        modelo = LogisticRegression(C=1e10, max_iter=5000, solver="lbfgs")
-        modelo.fit(escore_interno.reshape(-1, 1), y_treino)
-        return lambda escores: modelo.predict_proba(
-            np.asarray(escores, dtype=float).reshape(-1, 1))[:, 1]
-    raise ValueError(f"método de calibração desconhecido: {metodo}")
+    inner_score_ = np.asarray(inner_score_, dtype=float)
+    y_train = np.asarray(y_train)
+    if method == "isotonic":
+        model = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+        model.fit(inner_score_, y_train)
+        return lambda scores: np.clip(model.predict(np.asarray(scores, dtype=float)), 0, 1)
+    if method == "platt":
+        model = LogisticRegression(C=1e10, max_iter=5000, solver="lbfgs")
+        model.fit(inner_score_.reshape(-1, 1), y_train)
+        return lambda scores: model.predict_proba(
+            np.asarray(scores, dtype=float).reshape(-1, 1))[:, 1]
+    raise ValueError(f"unknown calibration method: {method}")
 
 
 # --------------------------------------------------------------------------------------
-# 2. Seleção gulosa sem limiar (limitação v)
+# 2. Threshold-free greedy selection (limitation v)
 # --------------------------------------------------------------------------------------
 
-def selecao_gulosa_pr_auc(matriz_interna, y_treino, nomes):
-    """Seleção gulosa (forward) maximizando a PR-AUC das probabilidades médias.
+def greedy_selection_ap(inner_matrix, y_train, names):
+    """Greedy forward selection maximizing the average precision of the averaged probabilities.
 
-    A versão do EX_032 maximiza o F1 no limiar 0,5, o que deixa o escore interno otimizado
-    naquele ponto e torna o estudo do limiar circular para esse ensemble. A PR-AUC não depende
-    de limiar e é a métrica de ranking mais próxima do uso em triagem, dada a prevalência de
-    17%. O resto do procedimento é idêntico: só a parte de treino do fold é usada e, em empate,
-    fica o subconjunto menor.
+    The F1 variant maximizes F1 at threshold 0.5, which leaves the inner score optimized at
+    that point and makes the threshold study circular for that ensemble. Average precision
+    needs no threshold and is the ranking metric closest to screening use at 17% prevalence.
+    The rest of the procedure is identical: only the training part of the fold is used and, on
+    a tie, the smaller subset wins.
     """
-    colunas = {nome: matriz_interna[:, j] for j, nome in enumerate(nomes)}
-    restantes, escolhidos, caminho = list(nomes), [], []
-    while restantes:
-        avaliados = []
-        for candidato in restantes:
-            media = np.mean([colunas[m] for m in escolhidos + [candidato]], axis=0)
-            avaliados.append((average_precision_score(y_treino, media), candidato))
-        pr_auc, candidato = max(avaliados, key=lambda par: par[0])
-        escolhidos.append(candidato)
-        restantes.remove(candidato)
-        caminho.append({"n_membros": len(escolhidos), "adicionado": candidato,
-                        "membros": tuple(escolhidos), "pr_auc_interno": float(pr_auc)})
-    melhor = max(caminho, key=lambda passo: (passo["pr_auc_interno"], -passo["n_membros"]))
-    return list(melhor["membros"]), pd.DataFrame(caminho)
+    columns = {name: inner_matrix[:, j] for j, name in enumerate(names)}
+    remaining, chosen, path = list(names), [], []
+    while remaining:
+        scored = []
+        for candidate in remaining:
+            mean_ = np.mean([columns[m] for m in chosen + [candidate]], axis=0)
+            scored.append((average_precision_score(y_train, mean_), candidate))
+        pr_auc, candidate = max(scored, key=lambda pair: pair[0])
+        chosen.append(candidate)
+        remaining.remove(candidate)
+        path.append({"n_members": len(chosen), "added": candidate,
+                        "members": tuple(chosen), "inner_ap": float(pr_auc)})
+    best = max(path, key=lambda step: (step["inner_ap"], -step["n_members"]))
+    return list(best["members"]), pd.DataFrame(path)
 
 
 # --------------------------------------------------------------------------------------
-# 3. Ensembles do fold, com os três novos
+# 3. The fold ensembles, including the three later ones
 # --------------------------------------------------------------------------------------
 
-def ensembles_do_fold(y, tr, registros_fold, nomes, seed):
-    """Os sete ensembles de um fold externo.
+def fold_ensembles(y, tr, fold_records, names, seed):
+    """The seven ensembles of one outer fold.
 
-    Os quatro do EX_032 (soft voting, soft ponderado, stacking e seleção gulosa por F1) mais
-    os dois stackings calibrados e a seleção gulosa por PR-AUC. Toda decisão sai das
-    probabilidades out-of-fold internas da parte de treino; o teste do fold não entra em
-    nenhuma escolha.
+    The four basic ones (soft voting, weighted soft voting, stacking and F1 greedy selection)
+    plus the two calibrated stackings and the average-precision greedy selection. Every
+    decision comes from the inner out-of-fold probabilities of the training part; the test fold
+    enters no choice.
     """
-    interna = np.column_stack([registros_fold[n]["inner_oof"] for n in nomes])
-    treino = np.column_stack([registros_fold[n]["train_proba"] for n in nomes])
-    teste = np.column_stack([registros_fold[n]["test_proba"] for n in nomes])
+    inner_oof_matrix = np.column_stack([fold_records[n]["inner_oof"] for n in names])
+    train_ = np.column_stack([fold_records[n]["train_proba"] for n in names])
+    test_ = np.column_stack([fold_records[n]["test_proba"] for n in names])
     y_tr = y[tr]
 
-    pesos = np.array([registros_fold[n]["inner_auc"] for n in nomes])
-    pesos = pesos / pesos.sum()
+    weights = np.array([fold_records[n]["inner_auc"] for n in names])
+    weights = weights / weights.sum()
 
-    meta = meta_modelo().fit(interna, y_tr)
+    meta = fit_meta_model().fit(inner_oof_matrix, y_tr)
     cv_meta = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    meta_interno = cross_val_predict(clone(meta_modelo()), interna, y_tr, cv=cv_meta,
+    meta_inner = cross_val_predict(clone(fit_meta_model()), inner_oof_matrix, y_tr, cv=cv_meta,
                                      method="predict_proba")[:, 1]
-    meta_treino = meta.predict_proba(treino)[:, 1]
-    meta_teste = meta.predict_proba(teste)[:, 1]
+    meta_train = meta.predict_proba(train_)[:, 1]
+    meta_test = meta.predict_proba(test_)[:, 1]
 
-    subconjunto, caminho = selecao_gulosa(interna, y_tr, nomes)
-    colunas = [nomes.index(n) for n in subconjunto]
-    subconjunto_pr, caminho_pr = selecao_gulosa_pr_auc(interna, y_tr, nomes)
-    colunas_pr = [nomes.index(n) for n in subconjunto_pr]
+    subset, path = greedy_selection(inner_oof_matrix, y_tr, names)
+    columns = [names.index(n) for n in subset]
+    subset_ap, path_ap = greedy_selection_ap(inner_oof_matrix, y_tr, names)
+    columns_ap = [names.index(n) for n in subset_ap]
 
-    saida = {
-        "Soft voting": {"train_proba": treino.mean(axis=1), "test_proba": teste.mean(axis=1),
-                        "inner_score": interna.mean(axis=1)},
-        "Soft voting ponderado (ROC-AUC)": {
-            "train_proba": treino @ pesos, "test_proba": teste @ pesos,
-            "inner_score": interna @ pesos, "pesos": dict(zip(nomes, pesos))},
-        "Stacking": {"train_proba": meta_treino, "test_proba": meta_teste,
-                     "inner_score": meta_interno,
-                     "coeficientes": dict(zip(nomes, meta.coef_.ravel()))},
-        "Seleção gulosa": {"train_proba": treino[:, colunas].mean(axis=1),
-                           "test_proba": teste[:, colunas].mean(axis=1),
-                           "inner_score": interna[:, colunas].mean(axis=1),
-                           "membros": subconjunto, "caminho": caminho},
-        "Seleção gulosa (PR-AUC)": {"train_proba": treino[:, colunas_pr].mean(axis=1),
-                                    "test_proba": teste[:, colunas_pr].mean(axis=1),
-                                    "inner_score": interna[:, colunas_pr].mean(axis=1),
-                                    "membros": subconjunto_pr, "caminho": caminho_pr},
+    output = {
+        "Soft voting": {"train_proba": train_.mean(axis=1), "test_proba": test_.mean(axis=1),
+                        "inner_score": inner_oof_matrix.mean(axis=1)},
+        "Weighted soft voting (ROC-AUC)": {
+            "train_proba": train_ @ weights, "test_proba": test_ @ weights,
+            "inner_score": inner_oof_matrix @ weights, "weights": dict(zip(names, weights))},
+        "Stacking": {"train_proba": meta_train, "test_proba": meta_test,
+                     "inner_score": meta_inner,
+                     "coefficients": dict(zip(names, meta.coef_.ravel()))},
+        "Greedy (F1)": {"train_proba": train_[:, columns].mean(axis=1),
+                           "test_proba": test_[:, columns].mean(axis=1),
+                           "inner_score": inner_oof_matrix[:, columns].mean(axis=1),
+                           "members": subset, "path": path},
+        "Greedy (AP)": {"train_proba": train_[:, columns_ap].mean(axis=1),
+                                    "test_proba": test_[:, columns_ap].mean(axis=1),
+                                    "inner_score": inner_oof_matrix[:, columns_ap].mean(axis=1),
+                                    "members": subset_ap, "path": path_ap},
     }
-    # Os dois stackings calibrados reusam o mesmo meta-modelo: só a transformação final muda,
-    # então a ordenação (e portanto ROC-AUC e PR-AUC) é idêntica à do stacking original.
-    for metodo, nome in (("isotonica", "Stacking (isotônica)"), ("platt", "Stacking (Platt)")):
-        calibrador = calibrar(meta_interno, y_tr, metodo)
-        saida[nome] = {"train_proba": calibrador(meta_treino),
-                       "test_proba": calibrador(meta_teste),
-                       "inner_score": calibrador(meta_interno),
-                       "metodo_calibracao": metodo}
-    return saida
+    # Both calibrated stackings reuse the same meta-model: only the final map changes, so the
+    # ordering — and therefore ROC-AUC and average precision — is identical to plain stacking.
+    for method, name in (("isotonic", "Stacking (isotonic)"), ("platt", "Stacking (Platt)")):
+        calibrator = calibrate(meta_inner, y_tr, method)
+        output[name] = {"train_proba": calibrator(meta_train),
+                       "test_proba": calibrator(meta_test),
+                       "inner_score": calibrator(meta_inner),
+                       "calibration_method": method}
+    return output
 
 
-def limiar_in_fold(y, folds, registros, modelos, grade=GRADE_LIMIAR_LARGA,
-                   limiar_padrao=LIMIAR_PADRAO):
-    """Métricas de teste no limiar 0,5 e no limiar escolhido dentro de cada fold.
+def in_fold_threshold(y, folds, records, models, grid=WIDE_THRESHOLD_GRID,
+                   default_threshold=DEFAULT_THRESHOLD):
+    """Test metrics at threshold 0.5 and at the threshold chosen inside each fold.
 
-    Em cada fold, o limiar é o que maximiza o F1 nas probabilidades out-of-fold internas da
-    parte de treino, sobre uma grade larga; o teste do fold não entra na escolha. Calibrar um
-    modelo e continuar lendo-o em 0,5 não resolve nada: a calibração encolhe as probabilidades
-    na direção da prevalência (17%), então em 0,5 quase nada é previsto positivo e o recall
-    desaba. O par calibração + limiar escolhido no fold é que responde à pergunta.
+    In every fold the threshold is the one that maximizes F1 on the inner out-of-fold
+    probabilities of the training part, over a wide grid; the test fold does not enter the
+    choice. Calibrating a model and still reading it at 0.5 settles nothing: calibration
+    shrinks the probabilities toward the prevalence (17%), so at 0.5 almost nothing is called
+    positive and recall collapses. It is calibration together with an in-fold threshold that
+    answers the question.
     """
     y = np.asarray(y)
-    linhas = []
+    rows = []
     for (seed, k), (tr, te) in folds.items():
-        for modelo in modelos:
-            registro = registros[(seed, k, modelo)]
-            interno, teste = registro["inner_score"], registro["test_proba"]
-            f1_interno = [f1_score(y[tr], (interno >= limiar).astype(int), zero_division=0)
-                          for limiar in grade]
-            escolhido = float(grade[int(np.argmax(f1_interno))])
-            linhas.append({
-                "modelo": modelo, "seed": seed, "fold": k, "limiar escolhido": escolhido,
-                **{f"{k_}: 0,5": v for k_, v in metricas(y[te], teste, limiar_padrao).items()},
-                **{f"{k_}: limiar do fold": v for k_, v in metricas(y[te], teste, escolhido).items()},
+        for model in models:
+            record = records[(seed, k, model)]
+            inner, test_ = record["inner_score"], record["test_proba"]
+            inner_f1 = [f1_score(y[tr], (inner >= threshold).astype(int), zero_division=0)
+                          for threshold in grid]
+            selected = float(grid[int(np.argmax(inner_f1))])
+            rows.append({
+                "model": model, "seed": seed, "fold": k, "selected threshold": selected,
+                **{f"{k_}: 0.5": v for k_, v in metrics(y[te], test_, default_threshold).items()},
+                **{f"{k_}: in-fold threshold": v
+                   for k_, v in metrics(y[te], test_, selected).items()},
             })
-    return pd.DataFrame(linhas)
+    return pd.DataFrame(rows)
 
 
-def frequencia_selecao(ensembles, nomes, modelo="Seleção gulosa"):
-    """Em quantos folds cada representação entrou numa das seleções gulosas."""
-    contagem = {n: 0 for n in nomes}
+def selection_frequency(ensembles, names, model="Greedy (F1)"):
+    """In how many folds each representation entered one of the greedy ensembles."""
+    counts = {n: 0 for n in names}
     total = 0
-    for (seed, k, nome), registro in ensembles.items():
-        if nome == modelo:
+    for (seed, k, name), record in ensembles.items():
+        if name == model:
             total += 1
-            for n in registro["membros"]:
-                contagem[n] += 1
-    return (pd.Series(contagem, name="folds").sort_values(ascending=False).to_frame()
-            .assign(frequencia=lambda d: d["folds"] / total))
+            for n in record["members"]:
+                counts[n] += 1
+    return (pd.Series(counts, name="folds").sort_values(ascending=False).to_frame()
+            .assign(frequency=lambda d: d["folds"] / total))
 
 
 # --------------------------------------------------------------------------------------
-# 4. Bootstrap por scaffold e testes pareados (limitação i)
+# 4. Scaffold bootstrap and paired tests (limitation i)
 # --------------------------------------------------------------------------------------
 
-def oof_de_uma_repeticao(y, folds, registros, modelos, seed=RANDOM_STATE):
-    """Monta o vetor de predições out-of-fold de uma repetição, por modelo.
+def oof_of_one_repetition(y, folds, records, models, seed=RANDOM_STATE):
+    """Assembles the out-of-fold prediction vector of one repetition, per model.
 
-    Numa repetição, as 5 folds cobrem a base inteira, então cada composto é previsto
-    exatamente uma vez, por um modelo que não o viu. É sobre esse vetor que o bootstrap
-    reamostra scaffolds inteiros.
+    Within a repetition the 5 folds cover the whole dataset, so every compound is predicted
+    exactly once, by a model that has not seen it. That vector is what the bootstrap resamples,
+    whole scaffolds at a time.
     """
     y = np.asarray(y)
-    proba = {m: np.full(len(y), np.nan) for m in modelos}
+    proba = {m: np.full(len(y), np.nan) for m in models}
     for (s, k), (tr, te) in folds.items():
         if s != seed:
             continue
-        for m in modelos:
-            proba[m][te] = registros[(s, k, m)]["test_proba"]
-    faltando = {m: int(np.isnan(v).sum()) for m, v in proba.items() if np.isnan(v).any()}
-    assert not faltando, f"predições OOF incompletas: {faltando}"
+        for m in models:
+            proba[m][te] = records[(s, k, m)]["test_proba"]
+    missing = {m: int(np.isnan(v).sum()) for m, v in proba.items() if np.isnan(v).any()}
+    assert not missing, f"incomplete out-of-fold predictions: {missing}"
     return proba
 
 
-def tabela_intervalos(y, proba, grupos, modelos, metricas_=None, n_boot=2000,
-                      limiar=LIMIAR_PADRAO, seed=RANDOM_STATE):
-    """IC95% de cada modelo, reamostrando scaffolds inteiros."""
-    metricas_ = metricas_ or ["roc_auc", "average_precision", "f1", "matthews_corrcoef",
+def intervals_table(y, proba, groups, models, metrics_=None, n_boot=2000,
+                      threshold=DEFAULT_THRESHOLD, seed=RANDOM_STATE):
+    """95% CI of each model, resampling whole scaffolds."""
+    metrics_ = metrics_ or ["roc_auc", "average_precision", "f1", "matthews_corrcoef",
                               "bedroc_20", "precision_at_100"]
-    linhas = []
-    for m in modelos:
-        tabela = group_bootstrap_ci(y, proba[m], grupos, limiar, metrics=metricas_,
+    rows = []
+    for m in models:
+        table = group_bootstrap_ci(y, proba[m], groups, threshold, metrics=metrics_,
                                     n_boot=n_boot, seed=seed)
-        linhas.append(tabela.assign(modelo=m))
-    return pd.concat(linhas, ignore_index=True)[
-        ["modelo", "metric", "point", "ci_low", "ci_high", "n_replicates"]]
+        rows.append(table.assign(model=m))
+    return pd.concat(rows, ignore_index=True)[
+        ["model", "metric", "point", "ci_low", "ci_high", "n_replicates"]]
 
 
-def tabela_pareada(y, proba, grupos, desafiantes, referencia, metricas_=None, n_boot=2000,
-                   limiar=LIMIAR_PADRAO, seed=RANDOM_STATE):
-    """Diferença desafiante − referência, com o mesmo reamostramento nos dois modelos."""
-    metricas_ = metricas_ or ["roc_auc", "average_precision", "f1", "matthews_corrcoef",
+def paired_table(y, proba, groups, challengers, reference, metrics_=None, n_boot=2000,
+                   threshold=DEFAULT_THRESHOLD, seed=RANDOM_STATE):
+    """Difference challenger − reference, with the same resample applied to both models."""
+    metrics_ = metrics_ or ["roc_auc", "average_precision", "f1", "matthews_corrcoef",
                               "bedroc_20"]
-    linhas = []
-    for m in desafiantes:
-        tabela = paired_group_bootstrap(y, proba[m], proba[referencia], grupos, limiar, limiar,
-                                        metrics=metricas_, n_boot=n_boot, seed=seed)
-        linhas.append(tabela.assign(modelo=m, referencia=referencia))
-    return pd.concat(linhas, ignore_index=True)[
-        ["modelo", "referencia", "metric", "A", "B", "difference", "ci_low", "ci_high",
+    rows = []
+    for m in challengers:
+        table = paired_group_bootstrap(y, proba[m], proba[reference], groups, threshold, threshold,
+                                        metrics=metrics_, n_boot=n_boot, seed=seed)
+        rows.append(table.assign(model=m, reference=reference))
+    return pd.concat(rows, ignore_index=True)[
+        ["model", "reference", "metric", "A", "B", "difference", "ci_low", "ci_high",
          "p_two_sided", "excludes_zero"]]
 
 
-def tabela_nadeau_bengio(por_fold, desafiantes, referencia, metricas_=None, parte="teste"):
-    """Teste t corrigido de Nadeau–Bengio sobre as 15 folds.
+def nadeau_bengio_table(per_fold, challengers, reference, metrics_=None, part="test"):
+    """Corrected resampled t-test (Nadeau-Bengio) over the 15 folds.
 
-    As folds de uma CV repetida compartilham dados de treino, então o teste t pareado comum é
-    anticonservador. A correção troca o fator de variância 1/n por 1/n + n_teste/n_treino. Com
-    5 folds, n_teste/n_treino = 1/4, e o fator vai de 1/15 para 0,3167.
+    The folds of a repeated CV share training data, so the ordinary paired t-test is
+    anticonservative. The correction replaces the 1/n variance factor by 1/n + n_test/n_train.
+    With 5-fold splits, n_test/n_train = 1/4, so the factor goes from 1/15 to 0.3167.
     """
-    metricas_ = metricas_ or ["f1", "roc_auc", "average_precision", "mcc"]
-    tabela = por_fold.query("parte == @parte").set_index(["modelo", "seed", "fold"])
-    linhas = []
-    for m in desafiantes:
-        for metrica in metricas_:
-            a = tabela.loc[m, metrica].sort_index()
-            b = tabela.loc[referencia, metrica].sort_index()
-            resultado = corrected_resampled_ttest(a.to_numpy(), b.to_numpy(),
+    metrics_ = metrics_ or ["f1", "roc_auc", "average_precision", "mcc"]
+    table = per_fold.query("part == @part").set_index(["model", "seed", "fold"])
+    rows = []
+    for m in challengers:
+        for metric_ in metrics_:
+            a = table.loc[m, metric_].sort_index()
+            b = table.loc[reference, metric_].sort_index()
+            result = corrected_resampled_ttest(a.to_numpy(), b.to_numpy(),
                                                   n_train=4, n_test=1)
-            linhas.append({"modelo": m, "referencia": referencia, "metrica": metrica,
-                           "Δ médio": resultado["mean_difference"],
-                           "p corrigido": resultado["p_value"],
-                           "p ingênuo": resultado["naive_p_value"]})
-    return pd.DataFrame(linhas)
+            rows.append({"model": m, "reference": reference, "metric": metric_,
+                           "mean Δ": result["mean_difference"],
+                           "corrected p": result["p_value"],
+                           "uncorrected p": result["naive_p_value"]})
+    return pd.DataFrame(rows)
 
 
 # --------------------------------------------------------------------------------------
-# 5. Colapso por InChIKey (limitação iii)
+# 5. InChIKey collapse (limitation iii)
 # --------------------------------------------------------------------------------------
 
-def colapsar_por_inchikey(y, proba, chaves):
-    """Agrega as predições da base não padronizada em uma predição por substância.
+def collapse_by_inchikey(y, proba, keys_):
+    """Aggregates the unstandardized predictions into one prediction per substance.
 
-    Na base não padronizada, uma substância com várias formas é contada várias vezes no fold
-    de teste. Se as substâncias com mais formas forem mais fáceis, o F1 fica inflado sem que o
-    modelo seja melhor. Colapsar por InChIKey (média das probabilidades, rótulo pela mesma
-    regra "qualquer forma positiva" da padronização) remove esse efeito de contagem sem mexer
-    no modelo. Se o Δ para a base padronizada sumir, a queda era contagem.
+    In the unstandardized dataset a substance with several forms is counted several times in
+    the test fold. If the substances with more forms are the easier ones, F1 is inflated
+    without the model being any better. Collapsing by InChIKey (the mean of the probabilities,
+    the label by the same "positive if any form is positive" rule used by standardization)
+    removes that counting effect without touching the model. If the Δ against the standardized
+    dataset disappears, the drop was counting.
 
-    Linhas sem InChIKey ficam de fora. Devolve o rótulo e a probabilidade por substância.
+    Rows without an InChIKey are left out. Returns the label and the probability per substance.
     """
-    tabela = pd.DataFrame({"chave": np.asarray(chaves), "y": np.asarray(y)})
-    for nome, vetor in proba.items():
-        tabela[nome] = np.asarray(vetor)
-    tabela = tabela[tabela["chave"].notna()]
-    agregado = tabela.groupby("chave", sort=False).agg(
-        {"y": "max", **{nome: "mean" for nome in proba}})
-    return agregado["y"].to_numpy(), {n: agregado[n].to_numpy() for n in proba}
+    table = pd.DataFrame({"key": np.asarray(keys_), "y": np.asarray(y)})
+    for name, vector in proba.items():
+        table[name] = np.asarray(vector)
+    table = table[table["key"].notna()]
+    aggregated = table.groupby("key", sort=False).agg(
+        {"y": "max", **{name: "mean" for name in proba}})
+    return aggregated["y"].to_numpy(), {n: aggregated[n].to_numpy() for n in proba}
 
 
 # --------------------------------------------------------------------------------------
-# 6. Ablação dos conflitos de rótulo (limitação iv)
+# 6. Label-conflict ablation (limitation iv)
 # --------------------------------------------------------------------------------------
 
-def aplicar_politica_conflito(base, politica):
-    """Aplica uma das três políticas às substâncias com rótulos conflitantes.
+def apply_conflict_policy(dataset, policy):
+    """Applies one of the three policies to the substances with conflicting labels.
 
-    A fusão por InChIKey junta formas da mesma substância que vinham com rótulos diferentes;
-    o EX_032 resolve todas como positivas. As três políticas medem quanto dessa escolha
-    aparece nos resultados:
+    The InChIKey merge joins forms of the same substance that arrived with different labels;
+    the default resolves them all as positive. The three policies measure how much of that
+    choice shows up in the results:
 
-    * ``"positivo"``: a regra do EX_032 (nada muda);
-    * ``"removido"``: as substâncias conflitantes saem da base;
-    * ``"negativo"``: viram negativas.
+    * ``"positive"``: the default rule (nothing changes);
+    * ``"removed"``: the conflicting substances leave the dataset;
+    * ``"negative"``: they become negatives.
 
-    Devolve a base com a política aplicada e as posições mantidas, para recortar embeddings e
-    grupos de scaffold na mesma ordem.
+    Returns the dataset with the policy applied and the kept positions, so that embeddings and
+    scaffold groups can be sliced in the same order.
     """
-    conflitante = base["rotulo_conflitante"].to_numpy().astype(bool)
-    if politica == "positivo":
-        return base.copy(), np.arange(len(base))
-    if politica == "negativo":
-        saida = base.copy()
-        saida.loc[conflitante, "label"] = 0
-        return saida, np.arange(len(base))
-    if politica == "removido":
-        mantidas = np.flatnonzero(~conflitante)
-        return base.iloc[mantidas].reset_index(drop=True), mantidas
-    raise ValueError(f"política desconhecida: {politica}")
+    conflicting = dataset["conflicting_label"].to_numpy().astype(bool)
+    if policy == "positive":
+        return dataset.copy(), np.arange(len(dataset))
+    if policy == "negative":
+        output = dataset.copy()
+        output.loc[conflicting, "label"] = 0
+        return output, np.arange(len(dataset))
+    if policy == "removed":
+        kept = np.flatnonzero(~conflicting)
+        return dataset.iloc[kept].reset_index(drop=True), kept
+    raise ValueError(f"unknown policy: {policy}")

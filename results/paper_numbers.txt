@@ -1,111 +1,111 @@
-                    seção                                              afirmação do artigo    artigo  calculado confere
-§4.1 base não padronizada                                                        compostos 4233.0000  4233.0000      ok
-§4.1 base não padronizada                                                        positivos  727.0000   727.0000      ok
-§4.1 base não padronizada                                                  prevalência (%)   17.1700    17.1700      ok
-    §4.1 base padronizada                                                        compostos 3752.0000  3752.0000      ok
-    §4.1 base padronizada                                                        positivos  637.0000   637.0000      ok
-    §4.1 base padronizada                                                  prevalência (%)   16.9800    16.9800      ok
-    §4.1 base padronizada                                                linhas colapsadas  481.0000   481.0000      ok
-    §4.1 base padronizada                                     grupos de formas redundantes  411.0000   411.0000      ok
-    §4.1 base padronizada                                    grupos com rótulo conflitante   82.0000    82.0000      ok
-     §4.1 externo (bruto)                                                        compostos 1557.0000  1557.0000      ok
-     §4.1 externo (bruto)                                                        positivos   35.0000    35.0000      ok
-     §4.1 externo (bruto)                                                  prevalência (%)    2.2500     2.2500      ok
-  §3.3 split por scaffold                                      scaffolds em treino e teste    0.0000     0.0000      ok
-     §3.3 split aleatório             scaffolds compartilhados por fold (base padronizada)  227.0000   227.0000      ok
-     §3.3 split aleatório         scaffolds compartilhados por fold (base não padronizada)  301.0000   301.0000      ok
-                 Tabela 1                                        Δf1 (original, aleatorio)    0.0620     0.0620      ok
-                 Tabela 1                                   Δroc_auc (original, aleatorio)    0.0400     0.0400      ok
-                 Tabela 1                         Δaverage_precision (original, aleatorio)    0.0880     0.0880      ok
-                 Tabela 1                                       Δmcc (original, aleatorio)    0.0790     0.0790      ok
-                 Tabela 1                                     Δf1 (padronizada, aleatorio)    0.0430     0.0430      ok
-                 Tabela 1                                Δroc_auc (padronizada, aleatorio)    0.0360     0.0360      ok
-                 Tabela 1                      Δaverage_precision (padronizada, aleatorio)    0.0590     0.0590      ok
-                 Tabela 1                                    Δmcc (padronizada, aleatorio)    0.0580     0.0580      ok
-                 Tabela 1                                         Δf1 (original, scaffold)    0.0260     0.0260      ok
-                 Tabela 1                                    Δroc_auc (original, scaffold)    0.0240     0.0240      ok
-                 Tabela 1                          Δaverage_precision (original, scaffold)    0.0560     0.0560      ok
-                 Tabela 1                                        Δmcc (original, scaffold)    0.0350     0.0350      ok
-                 Tabela 1                                      Δf1 (padronizada, scaffold)    0.0120     0.0120      ok
-                 Tabela 1                                 Δroc_auc (padronizada, scaffold)    0.0170     0.0170      ok
-                 Tabela 1                       Δaverage_precision (padronizada, scaffold)    0.0330     0.0330      ok
-                 Tabela 1                                     Δmcc (padronizada, scaffold)    0.0170     0.0170      ok
-                 Tabela 2                                          MolFormer-XL f1 (média)    0.4230     0.4230      ok
-                 Tabela 2                                         MolFormer-XL f1 (desvio)    0.0360     0.0360      ok
-                 Tabela 2                                     MolFormer-XL roc_auc (média)    0.7350     0.7350      ok
-                 Tabela 2                                    MolFormer-XL roc_auc (desvio)    0.0400     0.0400      ok
-                 Tabela 2                           MolFormer-XL average_precision (média)    0.4280     0.4280      ok
-                 Tabela 2                          MolFormer-XL average_precision (desvio)    0.0650     0.0650      ok
-                 Tabela 2                               Seleção gulosa (PR-AUC) f1 (média)    0.4350     0.4350      ok
-                 Tabela 2                              Seleção gulosa (PR-AUC) f1 (desvio)    0.0450     0.0450      ok
-                 Tabela 2                          Seleção gulosa (PR-AUC) roc_auc (média)    0.7520     0.7520      ok
-                 Tabela 2                         Seleção gulosa (PR-AUC) roc_auc (desvio)    0.0440     0.0440      ok
-                 Tabela 2                Seleção gulosa (PR-AUC) average_precision (média)    0.4610     0.4610      ok
-                 Tabela 2               Seleção gulosa (PR-AUC) average_precision (desvio)    0.0590     0.0590      ok
-                     §4.2      comparações ensemble x melhor individual com Δ <= 0 (de 80)    0.0000     0.0000      ok
-                     §4.2                                           Greedy (F1) Δprecision    0.0350     0.0350      ok
-                     §4.2                                              Greedy (F1) Δrecall   -0.0470    -0.0470      ok
-                     §4.3                                                 Δroc_auc pareado    0.0160     0.0160      ok
-                     §4.3                                        IC de Δroc_auc (inferior)    0.0030     0.0030      ok
-                     §4.3                                        IC de Δroc_auc (superior)    0.0270     0.0270      ok
-                     §4.3                                       Δaverage_precision pareado    0.0300     0.0300      ok
-                     §4.3                              IC de Δaverage_precision (inferior)    0.0040     0.0040      ok
-                     §4.3                              IC de Δaverage_precision (superior)    0.0520     0.0520      ok
-                     §4.3                                                      Δf1 pareado    0.0170     0.0170      ok
-                     §4.3                                             IC de Δf1 (inferior)   -0.0020    -0.0020      ok
-                     §4.3                                             IC de Δf1 (superior)    0.0360     0.0360      ok
-                     §4.3          modelos que excluem zero em ROC-AUC/AP (só Greedy (AP))    1.0000     1.0000      ok
-                Conclusão                                  Seleção gulosa (PR-AUC) roc_auc    0.7540     0.7540      ok
-                Conclusão                      Seleção gulosa (PR-AUC) roc_auc IC inferior    0.7250     0.7250      ok
-                Conclusão                      Seleção gulosa (PR-AUC) roc_auc IC superior    0.7840     0.7840      ok
-                Conclusão                        Seleção gulosa (PR-AUC) average_precision    0.4610     0.4610      ok
-                Conclusão            Seleção gulosa (PR-AUC) average_precision IC inferior    0.4120     0.4120      ok
-                Conclusão            Seleção gulosa (PR-AUC) average_precision IC superior    0.5130     0.5130      ok
-                Conclusão                                             MolFormer-XL roc_auc    0.7380     0.7380      ok
-                Conclusão                                 MolFormer-XL roc_auc IC inferior    0.7070     0.7070      ok
-                Conclusão                                 MolFormer-XL roc_auc IC superior    0.7730     0.7730      ok
-                Conclusão                                   MolFormer-XL average_precision    0.4300     0.4300      ok
-                Conclusão                       MolFormer-XL average_precision IC inferior    0.3760     0.3760      ok
-                Conclusão                       MolFormer-XL average_precision IC superior    0.4930     0.4930      ok
-                     §4.4                                  limiar do pico OOF, Greedy (AP)    0.5400     0.5400      ok
-                     §4.4                                               F1 de teste em 0,5    0.4350     0.4350      ok
-                     §4.4                                  F1 de teste no limiar escolhido    0.4430     0.4430      ok
-                     §4.4                                   ganho máximo ao mover o limiar    0.0080     0.0080      ok
-                     §4.4                                  limiar do pico OOF, Greedy (F1)    0.5000     0.5000      ok
-                     §4.4 espalhamento do F1 dos stackings com limiar in-fold (artigo: ~0)       NaN     0.0040       —
-                     §4.5           Δ F1 médio aleatório − scaffold (original, 22 modelos)    0.0420     0.0420      ok
-                     §4.5      Δ ROC-AUC médio aleatório − scaffold (original, 22 modelos)    0.0410     0.0410      ok
-                     §4.5           Δ F1 médio aleatório − scaffold (original, 25 modelos)       NaN     0.0470       —
-                     §4.5      Δ ROC-AUC médio aleatório − scaffold (original, 25 modelos)       NaN     0.0420       —
-                     §4.5        Δ F1 médio aleatório − scaffold (padronizada, 22 modelos)    0.0215     0.0215      ok
-                     §4.5   Δ ROC-AUC médio aleatório − scaffold (padronizada, 22 modelos)    0.0240     0.0240      ok
-                     §4.5        Δ F1 médio aleatório − scaffold (padronizada, 25 modelos)       NaN     0.0240       —
-                     §4.5   Δ ROC-AUC médio aleatório − scaffold (padronizada, 25 modelos)       NaN     0.0250       —
-                     §4.5         Δ F1 médio padronizada − original (scaffold, 22 modelos)   -0.0160    -0.0160      ok
-                     §4.5                 modelos que caem com a padronização (22 modelos)   19.0000    19.0000      ok
-                     §4.5         Δ F1 médio padronizada − original (scaffold, 25 modelos)       NaN    -0.0210       —
-                     §4.5                 modelos que caem com a padronização (25 modelos)       NaN    22.0000       —
-                     §4.2                      Spearman mínimo entre cenários (22 modelos)    0.9480     0.9480      ok
-                     §4.2                      Spearman mínimo entre cenários (25 modelos)       NaN     0.8620       —
-                     §4.2                                     gap treino−teste do Graph-FP    0.2110     0.2110      ok
-                     §4.2                                 Graph-FP é o maior gap (1 = sim)    1.0000     1.0000      ok
-                     §4.5                            Δ F1 do MolFormer-XL contra as linhas   -0.0270    -0.0270      ok
-                     §4.5                     Δ F1 do MolFormer-XL contra a base colapsada   -0.0190    -0.0190      ok
-                     §4.5                           fração do drop explicada pela contagem    0.3000     0.3000      ok
-                     §4.6                     Spearman mínimo entre as políticas de rótulo    0.9770     0.9770      ok
-                     §4.6                        políticas em que o ensemble perde (de 12)    0.0000     0.0000      ok
-                     §4.7                                 compostos no externo padronizado 1057.0000  1057.0000      ok
-                     §4.7                                 positivos no externo padronizado   32.0000    32.0000      ok
-                     §4.7                           prevalência do externo padronizado (%)    3.0300     3.0300      ok
-                     §4.7                                        Precision@100 do ensemble    0.1500     0.1500      ok
-                     §4.7                                    Precision@100 do MolFormer-XL    0.1300     0.1300      ok
-                     §4.7                                           Recall@100 do ensemble    0.4690     0.4690      ok
-                     §4.7                                       Recall@100 do MolFormer-XL    0.4060     0.4060      ok
-                     §4.7                                        BEDROC (α=20) do ensemble    0.3460     0.3460      ok
-                     §4.7                                    BEDROC (α=20) do MolFormer-XL    0.3060     0.3060      ok
-                     §4.7                           compostos no corte de scaffold inédito  426.0000   426.0000      ok
-                     §4.7                           positivos no corte de scaffold inédito   14.0000    14.0000      ok
-                     §4.5                        frequência de MolFormer-XL no Greedy (AP)    1.0000     1.0000      ok
-                     §4.5                                 frequência de GIN no Greedy (AP)    1.0000     1.0000      ok
+                    section                                               claim in the paper     paper  computed verdict
+§4.1 unstandardized dataset                                                        compounds 4233.0000 4233.0000      ok
+§4.1 unstandardized dataset                                                        positives  727.0000  727.0000      ok
+§4.1 unstandardized dataset                                                   prevalence (%)   17.1700   17.1700      ok
+  §4.1 standardized dataset                                                        compounds 3752.0000 3752.0000      ok
+  §4.1 standardized dataset                                                        positives  637.0000  637.0000      ok
+  §4.1 standardized dataset                                                   prevalence (%)   16.9800   16.9800      ok
+  §4.1 standardized dataset                                        rows merged as duplicates  481.0000  481.0000      ok
+  §4.1 standardized dataset                                        groups of redundant forms  411.0000  411.0000      ok
+  §4.1 standardized dataset                                   groups with conflicting labels   82.0000   82.0000      ok
+    §4.1 external set (raw)                                                        compounds 1557.0000 1557.0000      ok
+    §4.1 external set (raw)                                                        positives   35.0000   35.0000      ok
+    §4.1 external set (raw)                                                   prevalence (%)    2.2500    2.2500      ok
+        §3.3 scaffold split                              scaffolds in train and test at once    0.0000    0.0000      ok
+          §3.3 random split                 scaffolds shared per fold (standardized dataset)  227.0000  227.0000      ok
+          §3.3 random split               scaffolds shared per fold (unstandardized dataset)  301.0000  301.0000      ok
+                    Table 1                                     Δf1 (unstandardized, random)    0.0620    0.0620      ok
+                    Table 1                                Δroc_auc (unstandardized, random)    0.0400    0.0400      ok
+                    Table 1                      Δaverage_precision (unstandardized, random)    0.0880    0.0880      ok
+                    Table 1                                    Δmcc (unstandardized, random)    0.0790    0.0790      ok
+                    Table 1                                       Δf1 (standardized, random)    0.0430    0.0430      ok
+                    Table 1                                  Δroc_auc (standardized, random)    0.0360    0.0360      ok
+                    Table 1                        Δaverage_precision (standardized, random)    0.0590    0.0590      ok
+                    Table 1                                      Δmcc (standardized, random)    0.0580    0.0580      ok
+                    Table 1                                   Δf1 (unstandardized, scaffold)    0.0260    0.0260      ok
+                    Table 1                              Δroc_auc (unstandardized, scaffold)    0.0240    0.0240      ok
+                    Table 1                    Δaverage_precision (unstandardized, scaffold)    0.0560    0.0560      ok
+                    Table 1                                  Δmcc (unstandardized, scaffold)    0.0350    0.0350      ok
+                    Table 1                                     Δf1 (standardized, scaffold)    0.0120    0.0120      ok
+                    Table 1                                Δroc_auc (standardized, scaffold)    0.0170    0.0170      ok
+                    Table 1                      Δaverage_precision (standardized, scaffold)    0.0330    0.0330      ok
+                    Table 1                                    Δmcc (standardized, scaffold)    0.0170    0.0170      ok
+                    Table 2                                           MolFormer-XL f1 (mean)    0.4230    0.4230      ok
+                    Table 2                                             MolFormer-XL f1 (sd)    0.0360    0.0360      ok
+                    Table 2                                      MolFormer-XL roc_auc (mean)    0.7350    0.7350      ok
+                    Table 2                                        MolFormer-XL roc_auc (sd)    0.0400    0.0400      ok
+                    Table 2                            MolFormer-XL average_precision (mean)    0.4280    0.4280      ok
+                    Table 2                              MolFormer-XL average_precision (sd)    0.0650    0.0650      ok
+                    Table 2                                            Greedy (AP) f1 (mean)    0.4350    0.4350      ok
+                    Table 2                                              Greedy (AP) f1 (sd)    0.0450    0.0450      ok
+                    Table 2                                       Greedy (AP) roc_auc (mean)    0.7520    0.7520      ok
+                    Table 2                                         Greedy (AP) roc_auc (sd)    0.0440    0.0440      ok
+                    Table 2                             Greedy (AP) average_precision (mean)    0.4610    0.4610      ok
+                    Table 2                               Greedy (AP) average_precision (sd)    0.0590    0.0590      ok
+                       §4.2             ensemble-vs-best comparisons with Δ <= 0 (out of 80)    0.0000    0.0000      ok
+                       §4.2                                           Greedy (F1) Δprecision    0.0350    0.0350      ok
+                       §4.2                                              Greedy (F1) Δrecall   -0.0470   -0.0470      ok
+                       §4.3                                                  paired Δroc_auc    0.0160    0.0160      ok
+                       §4.3                                           CI of Δroc_auc (lower)    0.0030    0.0030      ok
+                       §4.3                                           CI of Δroc_auc (upper)    0.0270    0.0270      ok
+                       §4.3                                        paired Δaverage_precision    0.0300    0.0300      ok
+                       §4.3                                 CI of Δaverage_precision (lower)    0.0040    0.0040      ok
+                       §4.3                                 CI of Δaverage_precision (upper)    0.0520    0.0520      ok
+                       §4.3                                                       paired Δf1    0.0170    0.0170      ok
+                       §4.3                                                CI of Δf1 (lower)   -0.0020   -0.0020      ok
+                       §4.3                                                CI of Δf1 (upper)    0.0360    0.0360      ok
+                       §4.3           models excluding zero on ROC-AUC/AP (only Greedy (AP))    1.0000    1.0000      ok
+                 Conclusion                                              Greedy (AP) roc_auc    0.7540    0.7540      ok
+                 Conclusion                                     Greedy (AP) roc_auc CI lower    0.7250    0.7250      ok
+                 Conclusion                                     Greedy (AP) roc_auc CI upper    0.7840    0.7840      ok
+                 Conclusion                                    Greedy (AP) average_precision    0.4610    0.4610      ok
+                 Conclusion                           Greedy (AP) average_precision CI lower    0.4120    0.4120      ok
+                 Conclusion                           Greedy (AP) average_precision CI upper    0.5130    0.5130      ok
+                 Conclusion                                             MolFormer-XL roc_auc    0.7380    0.7380      ok
+                 Conclusion                                    MolFormer-XL roc_auc CI lower    0.7070    0.7070      ok
+                 Conclusion                                    MolFormer-XL roc_auc CI upper    0.7730    0.7730      ok
+                 Conclusion                                   MolFormer-XL average_precision    0.4300    0.4300      ok
+                 Conclusion                          MolFormer-XL average_precision CI lower    0.3760    0.3760      ok
+                 Conclusion                          MolFormer-XL average_precision CI upper    0.4930    0.4930      ok
+                       §4.4                          out-of-fold peak threshold, Greedy (AP)    0.5400    0.5400      ok
+                       §4.4                                                   test F1 at 0.5    0.4350    0.4350      ok
+                       §4.4                                test F1 at the selected threshold    0.4430    0.4430      ok
+                       §4.4                        largest F1 gain from moving the threshold    0.0080    0.0080      ok
+                       §4.4                          out-of-fold peak threshold, Greedy (F1)    0.5000    0.5000      ok
+                       §4.4 spread of the stacking F1 with the in-fold threshold (paper: ~0)       NaN    0.0040       —
+                       §4.5          mean Δ F1 random − scaffold (unstandardized, 22 models)    0.0420    0.0420      ok
+                       §4.5     mean Δ ROC-AUC random − scaffold (unstandardized, 22 models)    0.0410    0.0410      ok
+                       §4.5          mean Δ F1 random − scaffold (unstandardized, 25 models)       NaN    0.0470       —
+                       §4.5     mean Δ ROC-AUC random − scaffold (unstandardized, 25 models)       NaN    0.0420       —
+                       §4.5            mean Δ F1 random − scaffold (standardized, 22 models)    0.0215    0.0215      ok
+                       §4.5       mean Δ ROC-AUC random − scaffold (standardized, 22 models)    0.0240    0.0240      ok
+                       §4.5            mean Δ F1 random − scaffold (standardized, 25 models)       NaN    0.0240       —
+                       §4.5       mean Δ ROC-AUC random − scaffold (standardized, 25 models)       NaN    0.0250       —
+                       §4.5    mean Δ F1 standardized − unstandardized (scaffold, 22 models)   -0.0160   -0.0160      ok
+                       §4.5               models declining under standardization (22 models)   19.0000   19.0000      ok
+                       §4.5    mean Δ F1 standardized − unstandardized (scaffold, 25 models)       NaN   -0.0210       —
+                       §4.5               models declining under standardization (25 models)       NaN   22.0000       —
+                       §4.2                     minimum Spearman across settings (22 models)    0.9480    0.9480      ok
+                       §4.2                     minimum Spearman across settings (25 models)       NaN    0.8620       —
+                       §4.2                                       train-test gap of Graph-FP    0.2110    0.2110      ok
+                       §4.2                           Graph-FP has the largest gap (1 = yes)    1.0000    1.0000      ok
+                       §4.5                            Δ F1 of MolFormer-XL against the rows   -0.0270   -0.0270      ok
+                       §4.5               Δ F1 of MolFormer-XL against the collapsed dataset   -0.0190   -0.0190      ok
+                       §4.5                          share of the drop explained by counting    0.3000    0.3000      ok
+                       §4.6                          minimum Spearman between label policies    0.9770    0.9770      ok
+                       §4.6                    policies where the ensemble loses (out of 12)    0.0000    0.0000      ok
+                       §4.7                       compounds in the standardized external set 1057.0000 1057.0000      ok
+                       §4.7                       positives in the standardized external set   32.0000   32.0000      ok
+                       §4.7                  prevalence of the standardized external set (%)    3.0300    3.0300      ok
+                       §4.7                                    Precision@100 of the ensemble    0.1500    0.1500      ok
+                       §4.7                                    Precision@100 of MolFormer-XL    0.1300    0.1300      ok
+                       §4.7                                       Recall@100 of the ensemble    0.4690    0.4690      ok
+                       §4.7                                       Recall@100 of MolFormer-XL    0.4060    0.4060      ok
+                       §4.7                                    BEDROC (α=20) of the ensemble    0.3460    0.3460      ok
+                       §4.7                                    BEDROC (α=20) of MolFormer-XL    0.3060    0.3060      ok
+                       §4.7                              compounds in the novel-scaffold cut  426.0000  426.0000      ok
+                       §4.7                              positives in the novel-scaffold cut   14.0000   14.0000      ok
+                       §4.5               selection frequency of MolFormer-XL in Greedy (AP)    1.0000    1.0000      ok
+                       §4.5                        selection frequency of GIN in Greedy (AP)    1.0000    1.0000      ok
 
-100 de 100 números do artigo conferem; 8 valores impressos sem alvo no texto.
+100 of 100 checked numbers match; 8 values printed without a target in the text.

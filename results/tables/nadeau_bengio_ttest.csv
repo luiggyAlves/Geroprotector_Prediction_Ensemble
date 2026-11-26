@@ -1,113 +1,113 @@
-modelo,referencia,metrica,Δ médio,p corrigido,p ingênuo,base,protocolo
-Soft voting,MolFormer-XL,f1,0.007428876593853395,0.7285996880434353,0.453198285890003,base padronizada,split por scaffold
-Soft voting,MolFormer-XL,roc_auc,0.006267404183274975,0.48402901072498555,0.13947805586775142,base padronizada,split por scaffold
-Soft voting,MolFormer-XL,average_precision,0.017422297788396976,0.36244047714609456,0.05937989516261407,base padronizada,split por scaffold
-Soft voting,MolFormer-XL,mcc,0.009758398703588923,0.7334576620510762,0.4615183195718489,base padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,f1,0.009950354649812598,0.6410254547932291,0.31657614996879846,base padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,roc_auc,0.0075029183648726685,0.3988350362473278,0.07869436534558921,base padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,average_precision,0.01892206603332873,0.3253973820440224,0.04333288710396457,base padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,mcc,0.013056239694306332,0.6469211144443698,0.32494594575590635,base padronizada,split por scaffold
-Stacking,MolFormer-XL,f1,0.006024974837385929,0.5877626043404269,0.2465978007418162,base padronizada,split por scaffold
-Stacking,MolFormer-XL,roc_auc,0.015990777022671175,0.02270844417834149,6.811593149789098e-05,base padronizada,split por scaffold
-Stacking,MolFormer-XL,average_precision,0.024775484471144006,0.10819412686323611,0.002196530291759613,base padronizada,split por scaffold
-Stacking,MolFormer-XL,mcc,0.009049627801214951,0.5690288154411016,0.2244157982927796,base padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,f1,0.017070110019448307,0.2783942317226971,0.027625323188302214,base padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,roc_auc,0.014765656599786554,0.08204443054867251,0.0011188413837159028,base padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,average_precision,0.02720389766908576,0.11008235192603737,0.0022933955887121937,base padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,mcc,0.023166747035901842,0.26562807113804604,0.024162860184334528,base padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,f1,-0.08235715622808998,0.008929304953170535,1.1655342832015387e-05,base padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,roc_auc,0.013090353461222693,0.05551734346586227,0.00045246686208675165,base padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,average_precision,-0.004840352660932993,0.7411470126670407,0.4748373184976825,base padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,mcc,0.02388357028160657,0.33680956903716674,0.047910331946877154,base padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,f1,-0.11769316713813867,0.0002667767296028794,4.920192426838349e-08,base padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,roc_auc,0.015990777022671175,0.02270844417834149,6.811593149789098e-05,base padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,average_precision,0.024775484471144006,0.10819412686323611,0.002196530291759613,base padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,mcc,0.012648727596344998,0.6126859849273522,0.2780731319865701,base padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,f1,0.012173441578213925,0.4581372550085837,0.11855171274899157,base padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,roc_auc,0.017168211521999988,0.013512599075000067,2.49395896923404e-05,base padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,average_precision,0.03310063568851641,0.06608654140600456,0.00067328624070961,base padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,mcc,0.0165028497487248,0.46114186869482493,0.12086646924591818,base padronizada,split por scaffold
-Soft voting,MolFormer-XL,f1,0.029719272361083807,0.17702720797147076,0.007857811524211136,base padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,roc_auc,0.02591567951829054,0.00513521385542068,4.432276208640368e-06,base padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,average_precision,0.03600210895993481,0.05239509625407442,0.0003973920181019191,base padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,mcc,0.04037584051958305,0.16618756347406016,0.006635729080298738,base padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,f1,0.03170147027375539,0.14072877471848147,0.004286019831095443,base padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,roc_auc,0.027000522406609308,0.0036328982892312707,2.4819191090081405e-06,base padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,average_precision,0.038063799962620264,0.04213895663356306,0.00024615172770407783,base padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,mcc,0.04296727368808176,0.13247173222727635,0.0036662971610703222,base padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,f1,0.025626245657768557,0.14281665639220217,0.004453189369957409,base padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,roc_auc,0.03411733821193696,0.0011015603932450148,3.7942137936611916e-07,base padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,average_precision,0.05211099364900048,0.024655428434135616,8.034071078263863e-05,base padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,mcc,0.03672637522955194,0.13407606104247302,0.003781641555799899,base padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,f1,0.03844821150828608,0.023225039004284312,7.124895939816815e-05,base padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,roc_auc,0.031084049009323305,0.00126630750773431,4.68478559037719e-07,base padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,average_precision,0.046053623593703984,0.03239670204781356,0.0001407205548218345,base padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,mcc,0.05164806228188718,0.024445701428098304,7.896899378401398e-05,base padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,f1,-0.07264712412881937,0.053006900979591896,0.00040783707084580967,base padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,roc_auc,0.031894565891693344,0.0031612303104080986,1.9756785144625378e-06,base padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,average_precision,0.024119648095457767,0.2977123461673328,0.03349534724070174,base padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,mcc,0.03357874510137302,0.34080842014751034,0.04958978898580204,base padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,f1,-0.06953195823662052,0.0362375806637787,0.00017815075218495855,base padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,roc_auc,0.03411733821193696,0.0011015603932450148,3.7942137936611916e-07,base padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,average_precision,0.05211099364900048,0.024655428434135616,8.034071078263863e-05,base padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,mcc,0.03839201552430939,0.2601321701033218,0.02276941646189189,base padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,f1,0.0441007077689846,0.034032561547362415,0.00015602864487102965,base padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,roc_auc,0.034285237695007235,0.0010328300366428975,3.4442233014992673e-07,base padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,average_precision,0.053605052952940276,0.02585666713801911,8.845691613891616e-05,base padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,mcc,0.058885220496390216,0.03552475882818982,0.00017080964599242748,base padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,f1,0.006146708193741904,0.6291075813905056,0.30003408576226664,base não padronizada,split por scaffold
-Soft voting,MolFormer-XL,roc_auc,0.010113560571356647,0.33644891478240346,0.047760811001216,base não padronizada,split por scaffold
-Soft voting,MolFormer-XL,average_precision,0.03862130947776735,0.06797184013947756,0.0007185877106050806,base não padronizada,split por scaffold
-Soft voting,MolFormer-XL,mcc,0.009337054027993629,0.5569284520137623,0.2107606705899124,base não padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,f1,0.00885566514093434,0.48319641386268125,0.13877029380777323,base não padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,roc_auc,0.012067666750311198,0.2465432838805659,0.01956431772099108,base não padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,average_precision,0.04211615814567286,0.04345364115711567,0.00026312037652981556,base não padronizada,split por scaffold
-Soft voting ponderado (ROC-AUC),MolFormer-XL,mcc,0.012954435329797617,0.4077345683299176,0.0839913283458526,base não padronizada,split por scaffold
-Stacking,MolFormer-XL,f1,0.0019978256748952113,0.8690501943624253,0.7198609292471634,base não padronizada,split por scaffold
-Stacking,MolFormer-XL,roc_auc,0.016082969758496064,0.11819755471111103,0.0027419613391341034,base não padronizada,split por scaffold
-Stacking,MolFormer-XL,average_precision,0.04602598484930005,0.010019932028262648,1.4353492209023083e-05,base não padronizada,split por scaffold
-Stacking,MolFormer-XL,mcc,0.003928238501294062,0.8192150032033662,0.6196509633107593,base não padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,f1,0.017404481445208363,0.13898135507937112,0.004149406700924729,base não padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,roc_auc,0.017342866523780795,0.09382572378018926,0.0015462877659431998,base não padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,average_precision,0.04918944943969102,0.009712659211446536,1.356464010497343e-05,base não padronizada,split por scaffold
-Seleção gulosa,MolFormer-XL,mcc,0.024180483827141778,0.11536345896351419,0.0025792458086671415,base não padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,f1,-0.07631694260782201,0.008943839576645097,1.1689444351892613e-05,base não padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,roc_auc,0.01572254617684658,0.11780584712798406,0.0027190766490717364,base não padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,average_precision,0.02120732743146199,0.19770594976180705,0.010600909084565187,base não padronizada,split por scaffold
-Stacking (isotônica),MolFormer-XL,mcc,0.03238391635846394,0.1533625082692581,0.0053652895165929556,base não padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,f1,-0.055621538444368505,0.04961590256846946,0.0003520231811207274,base não padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,roc_auc,0.016082969758496064,0.11819755471111103,0.0027419613391341034,base não padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,average_precision,0.04602598484930005,0.010019932028262648,1.4353492209023083e-05,base não padronizada,split por scaffold
-Stacking (Platt),MolFormer-XL,mcc,0.04034043813457477,0.06925147172687582,0.0007504068874935648,base não padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,f1,0.0258904704526254,0.06264150143376894,0.0005952501558648904,base não padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,roc_auc,0.023553517624095365,0.006073846202930048,5.91117648478438e-06,base não padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,average_precision,0.05644738636218453,0.0015142130292582615,6.158488570066763e-07,base não padronizada,split por scaffold
-Seleção gulosa (PR-AUC),MolFormer-XL,mcc,0.03498001258930053,0.055483654442079124,0.00045184887618653725,base não padronizada,split por scaffold
-Soft voting,MolFormer-XL,f1,0.04757830120213295,0.0005561821531563862,1.387271441364917e-07,base não padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,roc_auc,0.03356020428014887,0.0019221845957589044,8.920805502565877e-07,base não padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,average_precision,0.07607049405076222,0.005215576716879506,4.551050745713968e-06,base não padronizada,split aleatório estratificado
-Soft voting,MolFormer-XL,mcc,0.0612080105861095,0.0007056989171030379,1.9599475512410455e-07,base não padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,f1,0.047543504825111035,0.0007586822681491062,2.179320511088961e-07,base não padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,roc_auc,0.034691899489014334,0.0013654751464014841,5.255296648866931e-07,base não padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,average_precision,0.07845474825592076,0.0038792759337056794,2.766589079858086e-06,base não padronizada,split aleatório estratificado
-Soft voting ponderado (ROC-AUC),MolFormer-XL,mcc,0.061163605073451394,0.0010083754028352707,3.3228082760063995e-07,base não padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,f1,0.04323804566253833,0.004793386148428956,3.943448465338302e-06,base não padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,roc_auc,0.04185892339651585,0.00015705020375773561,2.3882639905469592e-08,base não padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,average_precision,0.10041102358583344,0.0004911644341782606,1.1605219424761889e-07,base não padronizada,split aleatório estratificado
-Stacking,MolFormer-XL,mcc,0.06062873847491425,0.004560888069873574,3.6261232554086198e-06,base não padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,f1,0.05332481410414313,3.52937716410917e-05,3.4129322803093523e-09,base não padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,roc_auc,0.03959351440147819,0.00025441525099138005,4.6081753429784325e-08,base não padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,average_precision,0.08928746804743967,0.00017868536718678563,2.8430394336823797e-08,base não padronizada,split aleatório estratificado
-Seleção gulosa,MolFormer-XL,mcc,0.06875498575398863,7.07293211338881e-05,8.318076606486362e-09,base não padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,f1,-0.02125544690146701,0.461915949846135,0.12146760383334368,base não padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,roc_auc,0.04018214372710309,0.0002614239787848921,4.784296357065725e-08,base não padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,average_precision,0.076569521925936,0.0031731459126605665,1.9878385674242374e-06,base não padronizada,split aleatório estratificado
-Stacking (isotônica),MolFormer-XL,mcc,0.06904088917558716,0.008059614750273624,9.705268663575236e-06,base não padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,f1,0.0237092363240002,0.3282920926842856,0.04446413791817886,base não padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,roc_auc,0.04185892339651585,0.00015705020375773561,2.3882639905469592e-08,base não padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,average_precision,0.10041102358583344,0.0004911644341782606,1.1605219424761889e-07,base não padronizada,split aleatório estratificado
-Stacking (Platt),MolFormer-XL,mcc,0.09064452988372595,0.0007528485875683166,2.154756379878687e-07,base não padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,f1,0.06397012108602249,2.0340228663905304e-05,1.7117045266533556e-09,base não padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,roc_auc,0.043280163953193056,1.618890295403865e-05,1.291019881050944e-09,base não padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,average_precision,0.0978504857124685,0.0006161404039204035,1.6085247229770054e-07,base não padronizada,split aleatório estratificado
-Seleção gulosa (PR-AUC),MolFormer-XL,mcc,0.0824981333862184,3.9253001949374566e-05,3.905101374474866e-09,base não padronizada,split aleatório estratificado
+model,reference,metric,mean Δ,corrected p,uncorrected p,dataset,protocol
+Soft voting,MolFormer-XL,f1,0.007428876593853395,0.7285996880434353,0.453198285890003,standardized dataset,scaffold split
+Soft voting,MolFormer-XL,roc_auc,0.006267404183274975,0.48402901072498555,0.13947805586775142,standardized dataset,scaffold split
+Soft voting,MolFormer-XL,average_precision,0.017422297788396976,0.36244047714609456,0.05937989516261407,standardized dataset,scaffold split
+Soft voting,MolFormer-XL,mcc,0.009758398703588923,0.7334576620510762,0.4615183195718489,standardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,f1,0.009950354649812598,0.6410254547932291,0.31657614996879846,standardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,roc_auc,0.0075029183648726685,0.3988350362473278,0.07869436534558921,standardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,average_precision,0.01892206603332873,0.3253973820440224,0.04333288710396457,standardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,mcc,0.013056239694306332,0.6469211144443698,0.32494594575590635,standardized dataset,scaffold split
+Stacking,MolFormer-XL,f1,0.006024974837385929,0.5877626043404269,0.2465978007418162,standardized dataset,scaffold split
+Stacking,MolFormer-XL,roc_auc,0.015990777022671175,0.02270844417834149,6.811593149789098e-05,standardized dataset,scaffold split
+Stacking,MolFormer-XL,average_precision,0.024775484471144006,0.10819412686323611,0.002196530291759613,standardized dataset,scaffold split
+Stacking,MolFormer-XL,mcc,0.009049627801214951,0.5690288154411016,0.2244157982927796,standardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,f1,0.017070110019448307,0.2783942317226971,0.027625323188302214,standardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,roc_auc,0.014765656599786554,0.08204443054867251,0.0011188413837159028,standardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,average_precision,0.02720389766908576,0.11008235192603737,0.0022933955887121937,standardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,mcc,0.023166747035901842,0.26562807113804604,0.024162860184334528,standardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,f1,-0.08235715622808998,0.008929304953170535,1.1655342832015387e-05,standardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,roc_auc,0.013090353461222693,0.05551734346586227,0.00045246686208675165,standardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,average_precision,-0.004840352660932993,0.7411470126670407,0.4748373184976825,standardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,mcc,0.02388357028160657,0.33680956903716674,0.047910331946877154,standardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,f1,-0.11769316713813867,0.0002667767296028794,4.920192426838349e-08,standardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,roc_auc,0.015990777022671175,0.02270844417834149,6.811593149789098e-05,standardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,average_precision,0.024775484471144006,0.10819412686323611,0.002196530291759613,standardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,mcc,0.012648727596344998,0.6126859849273522,0.2780731319865701,standardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,f1,0.012173441578213925,0.4581372550085837,0.11855171274899157,standardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,roc_auc,0.017168211521999988,0.013512599075000067,2.49395896923404e-05,standardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,average_precision,0.03310063568851641,0.06608654140600456,0.00067328624070961,standardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,mcc,0.0165028497487248,0.46114186869482493,0.12086646924591818,standardized dataset,scaffold split
+Soft voting,MolFormer-XL,f1,0.029719272361083807,0.17702720797147076,0.007857811524211136,standardized dataset,random stratified split
+Soft voting,MolFormer-XL,roc_auc,0.02591567951829054,0.00513521385542068,4.432276208640368e-06,standardized dataset,random stratified split
+Soft voting,MolFormer-XL,average_precision,0.03600210895993481,0.05239509625407442,0.0003973920181019191,standardized dataset,random stratified split
+Soft voting,MolFormer-XL,mcc,0.04037584051958305,0.16618756347406016,0.006635729080298738,standardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,f1,0.03170147027375539,0.14072877471848147,0.004286019831095443,standardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,roc_auc,0.027000522406609308,0.0036328982892312707,2.4819191090081405e-06,standardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,average_precision,0.038063799962620264,0.04213895663356306,0.00024615172770407783,standardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,mcc,0.04296727368808176,0.13247173222727635,0.0036662971610703222,standardized dataset,random stratified split
+Stacking,MolFormer-XL,f1,0.025626245657768557,0.14281665639220217,0.004453189369957409,standardized dataset,random stratified split
+Stacking,MolFormer-XL,roc_auc,0.03411733821193696,0.0011015603932450148,3.7942137936611916e-07,standardized dataset,random stratified split
+Stacking,MolFormer-XL,average_precision,0.05211099364900048,0.024655428434135616,8.034071078263863e-05,standardized dataset,random stratified split
+Stacking,MolFormer-XL,mcc,0.03672637522955194,0.13407606104247302,0.003781641555799899,standardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,f1,0.03844821150828608,0.023225039004284312,7.124895939816815e-05,standardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,roc_auc,0.031084049009323305,0.00126630750773431,4.68478559037719e-07,standardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,average_precision,0.046053623593703984,0.03239670204781356,0.0001407205548218345,standardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,mcc,0.05164806228188718,0.024445701428098304,7.896899378401398e-05,standardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,f1,-0.07264712412881937,0.053006900979591896,0.00040783707084580967,standardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,roc_auc,0.031894565891693344,0.0031612303104080986,1.9756785144625378e-06,standardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,average_precision,0.024119648095457767,0.2977123461673328,0.03349534724070174,standardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,mcc,0.03357874510137302,0.34080842014751034,0.04958978898580204,standardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,f1,-0.06953195823662052,0.0362375806637787,0.00017815075218495855,standardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,roc_auc,0.03411733821193696,0.0011015603932450148,3.7942137936611916e-07,standardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,average_precision,0.05211099364900048,0.024655428434135616,8.034071078263863e-05,standardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,mcc,0.03839201552430939,0.2601321701033218,0.02276941646189189,standardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,f1,0.0441007077689846,0.034032561547362415,0.00015602864487102965,standardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,roc_auc,0.034285237695007235,0.0010328300366428975,3.4442233014992673e-07,standardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,average_precision,0.053605052952940276,0.02585666713801911,8.845691613891616e-05,standardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,mcc,0.058885220496390216,0.03552475882818982,0.00017080964599242748,standardized dataset,random stratified split
+Soft voting,MolFormer-XL,f1,0.006146708193741904,0.6291075813905056,0.30003408576226664,unstandardized dataset,scaffold split
+Soft voting,MolFormer-XL,roc_auc,0.010113560571356647,0.33644891478240346,0.047760811001216,unstandardized dataset,scaffold split
+Soft voting,MolFormer-XL,average_precision,0.03862130947776735,0.06797184013947756,0.0007185877106050806,unstandardized dataset,scaffold split
+Soft voting,MolFormer-XL,mcc,0.009337054027993629,0.5569284520137623,0.2107606705899124,unstandardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,f1,0.00885566514093434,0.48319641386268125,0.13877029380777323,unstandardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,roc_auc,0.012067666750311198,0.2465432838805659,0.01956431772099108,unstandardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,average_precision,0.04211615814567286,0.04345364115711567,0.00026312037652981556,unstandardized dataset,scaffold split
+Weighted soft voting (ROC-AUC),MolFormer-XL,mcc,0.012954435329797617,0.4077345683299176,0.0839913283458526,unstandardized dataset,scaffold split
+Stacking,MolFormer-XL,f1,0.0019978256748952113,0.8690501943624253,0.7198609292471634,unstandardized dataset,scaffold split
+Stacking,MolFormer-XL,roc_auc,0.016082969758496064,0.11819755471111103,0.0027419613391341034,unstandardized dataset,scaffold split
+Stacking,MolFormer-XL,average_precision,0.04602598484930005,0.010019932028262648,1.4353492209023083e-05,unstandardized dataset,scaffold split
+Stacking,MolFormer-XL,mcc,0.003928238501294062,0.8192150032033662,0.6196509633107593,unstandardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,f1,0.017404481445208363,0.13898135507937112,0.004149406700924729,unstandardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,roc_auc,0.017342866523780795,0.09382572378018926,0.0015462877659431998,unstandardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,average_precision,0.04918944943969102,0.009712659211446536,1.356464010497343e-05,unstandardized dataset,scaffold split
+Greedy (F1),MolFormer-XL,mcc,0.024180483827141778,0.11536345896351419,0.0025792458086671415,unstandardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,f1,-0.07631694260782201,0.008943839576645097,1.1689444351892613e-05,unstandardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,roc_auc,0.01572254617684658,0.11780584712798406,0.0027190766490717364,unstandardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,average_precision,0.02120732743146199,0.19770594976180705,0.010600909084565187,unstandardized dataset,scaffold split
+Stacking (isotonic),MolFormer-XL,mcc,0.03238391635846394,0.1533625082692581,0.0053652895165929556,unstandardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,f1,-0.055621538444368505,0.04961590256846946,0.0003520231811207274,unstandardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,roc_auc,0.016082969758496064,0.11819755471111103,0.0027419613391341034,unstandardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,average_precision,0.04602598484930005,0.010019932028262648,1.4353492209023083e-05,unstandardized dataset,scaffold split
+Stacking (Platt),MolFormer-XL,mcc,0.04034043813457477,0.06925147172687582,0.0007504068874935648,unstandardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,f1,0.0258904704526254,0.06264150143376894,0.0005952501558648904,unstandardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,roc_auc,0.023553517624095365,0.006073846202930048,5.91117648478438e-06,unstandardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,average_precision,0.05644738636218453,0.0015142130292582615,6.158488570066763e-07,unstandardized dataset,scaffold split
+Greedy (AP),MolFormer-XL,mcc,0.03498001258930053,0.055483654442079124,0.00045184887618653725,unstandardized dataset,scaffold split
+Soft voting,MolFormer-XL,f1,0.04757830120213295,0.0005561821531563862,1.387271441364917e-07,unstandardized dataset,random stratified split
+Soft voting,MolFormer-XL,roc_auc,0.03356020428014887,0.0019221845957589044,8.920805502565877e-07,unstandardized dataset,random stratified split
+Soft voting,MolFormer-XL,average_precision,0.07607049405076222,0.005215576716879506,4.551050745713968e-06,unstandardized dataset,random stratified split
+Soft voting,MolFormer-XL,mcc,0.0612080105861095,0.0007056989171030379,1.9599475512410455e-07,unstandardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,f1,0.047543504825111035,0.0007586822681491062,2.179320511088961e-07,unstandardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,roc_auc,0.034691899489014334,0.0013654751464014841,5.255296648866931e-07,unstandardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,average_precision,0.07845474825592076,0.0038792759337056794,2.766589079858086e-06,unstandardized dataset,random stratified split
+Weighted soft voting (ROC-AUC),MolFormer-XL,mcc,0.061163605073451394,0.0010083754028352707,3.3228082760063995e-07,unstandardized dataset,random stratified split
+Stacking,MolFormer-XL,f1,0.04323804566253833,0.004793386148428956,3.943448465338302e-06,unstandardized dataset,random stratified split
+Stacking,MolFormer-XL,roc_auc,0.04185892339651585,0.00015705020375773561,2.3882639905469592e-08,unstandardized dataset,random stratified split
+Stacking,MolFormer-XL,average_precision,0.10041102358583344,0.0004911644341782606,1.1605219424761889e-07,unstandardized dataset,random stratified split
+Stacking,MolFormer-XL,mcc,0.06062873847491425,0.004560888069873574,3.6261232554086198e-06,unstandardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,f1,0.05332481410414313,3.52937716410917e-05,3.4129322803093523e-09,unstandardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,roc_auc,0.03959351440147819,0.00025441525099138005,4.6081753429784325e-08,unstandardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,average_precision,0.08928746804743967,0.00017868536718678563,2.8430394336823797e-08,unstandardized dataset,random stratified split
+Greedy (F1),MolFormer-XL,mcc,0.06875498575398863,7.07293211338881e-05,8.318076606486362e-09,unstandardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,f1,-0.02125544690146701,0.461915949846135,0.12146760383334368,unstandardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,roc_auc,0.04018214372710309,0.0002614239787848921,4.784296357065725e-08,unstandardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,average_precision,0.076569521925936,0.0031731459126605665,1.9878385674242374e-06,unstandardized dataset,random stratified split
+Stacking (isotonic),MolFormer-XL,mcc,0.06904088917558716,0.008059614750273624,9.705268663575236e-06,unstandardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,f1,0.0237092363240002,0.3282920926842856,0.04446413791817886,unstandardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,roc_auc,0.04185892339651585,0.00015705020375773561,2.3882639905469592e-08,unstandardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,average_precision,0.10041102358583344,0.0004911644341782606,1.1605219424761889e-07,unstandardized dataset,random stratified split
+Stacking (Platt),MolFormer-XL,mcc,0.09064452988372595,0.0007528485875683166,2.154756379878687e-07,unstandardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,f1,0.06397012108602249,2.0340228663905304e-05,1.7117045266533556e-09,unstandardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,roc_auc,0.043280163953193056,1.618890295403865e-05,1.291019881050944e-09,unstandardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,average_precision,0.0978504857124685,0.0006161404039204035,1.6085247229770054e-07,unstandardized dataset,random stratified split
+Greedy (AP),MolFormer-XL,mcc,0.0824981333862184,3.9253001949374566e-05,3.905101374474866e-09,unstandardized dataset,random stratified split

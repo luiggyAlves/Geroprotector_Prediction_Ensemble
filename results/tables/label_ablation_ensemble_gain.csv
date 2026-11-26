@@ -1,13 +1,13 @@
-política,métrica,melhor individual,melhor ensemble,Δ (ensemble − individual)
-positivo,F1,MolFormer-XL,Seleção gulosa,0.017070110019448304
-positivo,ROC-AUC,MolFormer-XL,Seleção gulosa (PR-AUC),0.017168211521999988
-positivo,AP (PR-AUC),MolFormer-XL,Seleção gulosa (PR-AUC),0.0331006356885164
-positivo,MCC,MolFormer-XL,Stacking (isotônica),0.023883570281606592
-removido,F1,MolFormer-XL,Seleção gulosa (PR-AUC),0.023379061785337718
-removido,ROC-AUC,MolFormer-XL,Stacking,0.020712766883109746
-removido,AP (PR-AUC),MolFormer-XL,Seleção gulosa (PR-AUC),0.03651651146666063
-removido,MCC,MolFormer-XL,Seleção gulosa (PR-AUC),0.03019317748027389
-negativo,F1,MolFormer-XL,Seleção gulosa,0.017471073405176396
-negativo,ROC-AUC,MolFormer-XL,Stacking,0.016988760218597965
-negativo,AP (PR-AUC),MolFormer-XL,Seleção gulosa (PR-AUC),0.03662142975700078
-negativo,MCC,MolFormer-XL,Stacking (isotônica),0.05400889743865922
+policy,metric,best individual,best ensemble,Δ (ensemble − individual)
+positive,F1,MolFormer-XL,Greedy (F1),0.017070110019448304
+positive,ROC-AUC,MolFormer-XL,Greedy (AP),0.017168211521999988
+positive,AP (average precision),MolFormer-XL,Greedy (AP),0.0331006356885164
+positive,MCC,MolFormer-XL,Stacking (isotonic),0.023883570281606592
+removed,F1,MolFormer-XL,Greedy (AP),0.023379061785337718
+removed,ROC-AUC,MolFormer-XL,Stacking,0.020712766883109746
+removed,AP (average precision),MolFormer-XL,Greedy (AP),0.03651651146666063
+removed,MCC,MolFormer-XL,Greedy (AP),0.03019317748027389
+negative,F1,MolFormer-XL,Greedy (F1),0.017471073405176396
+negative,ROC-AUC,MolFormer-XL,Stacking,0.016988760218597965
+negative,AP (average precision),MolFormer-XL,Greedy (AP),0.03662142975700078
+negative,MCC,MolFormer-XL,Stacking (isotonic),0.05400889743865922
