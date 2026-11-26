@@ -1,5 +1,0 @@
-base,protocolo,melhor individual,F1 do melhor individual,F1 do melhor individual dp,melhor ensemble,F1 do melhor ensemble,F1 do melhor ensemble dp
-base padronizada,split por scaffold,MolFormer-XL,0.42300962811191545,0.03557041849194699,Seleção gulosa,0.44007973813136375,0.04889193707375521
-base padronizada,split aleatório estratificado,MolDeBERTa,0.43647589632377876,0.03282214986408779,Seleção gulosa,0.4738095315717079,0.03168813367612973
-base não padronizada,split por scaffold,MolFormer-XL,0.4501728880878606,0.02863279908226787,Seleção gulosa,0.467577369533069,0.02927801055926223
-base não padronizada,split aleatório estratificado,MolDeBERTa,0.47777969333554193,0.03250837121234106,Seleção gulosa,0.5291881138805884,0.031071313271793997

@@ -1,24 +1,18 @@
-"""Gera o notebook do benchmark completo (EX_032 + EX_033), o que reproduz o artigo.
+"""Builds the benchmark notebook, the one that reproduces every number in the paper.
 
-É a junção dos dois experimentos num notebook só: o EX_033 já repetia o EX_032 inteiro, e o
-que faltava para fechar com o artigo era o conjunto de modelos das agregações entre cenários.
-O EX_032 agregava 22 modelos (18 representações + 4 ensembles); o EX_033 acrescentou três
-ensembles e passou a agregar 25, o que muda as médias entre modelos e o Spearman das seções 7,
-8 e 11 — e o artigo cita os números de 22. Aqui as duas versões são calculadas, impressas e
-salvas lado a lado, com o conjunto explícito em cada linha.
+The notebook covers the whole study: sections 1 to 12 are the benchmark itself, and sections 13
+to 16 are the analyses that close five of the eight limitations listed in the paper (bootstrap
+confidence intervals, stacking calibration, threshold-free selection, the InChIKey collapse and
+the label-conflict ablation). Nothing is refitted between the two parts.
 
-Do EX_033, que é o EX_032 com as limitações do artigo endereçadas, vem:
+Sections 7, 8 and 11 aggregate across models, and the result depends on which models enter the
+average: the paper quotes the 22-model set (18 representations + 4 ensembles), while the full
+set has 25. Both are computed and saved side by side, labelled by set.
 
-* stacking calibrado dentro do fold, isotônica e Platt (limitação vi);
-* seleção gulosa por PR-AUC, sem limiar (limitação v);
-* bootstrap por scaffold e teste de Nadeau-Bengio na base padronizada (limitação i);
-* colapso por InChIKey das predições da base não padronizada (limitação iii);
-* ablação das três políticas para os 82 conflitos de rótulo (limitação iv).
+Helper functions live in analysis_utils.py, which imports protocol_utils and core_utils.
 
-Funções em ex033_utils.py, que importa o ex032_utils e o ex027_utils.
-
-Uso:
-    python utils/regressao_logistica/build_ex032_033.py
+Usage:
+    python utils/logistic_regression/build_benchmark_notebook.py
 """
 
 import json
@@ -39,47 +33,49 @@ def code(texto):
 
 # =========================================================================================
 md("""
-# Benchmark completo (EX_032 + EX_033) — 18 representações congeladas, cinco ensembles, quatro protocolos de avaliação
+# Combining Frozen Molecular Representations for Geroprotector Prediction Across Four Evaluation Protocols
 
-Este notebook é a junção do EX_032 e do EX_033 e é a base dos números do artigo. O EX_033 já repetia o EX_032 inteiro: os mesmos 18 encoders, as mesmas 15 folds e os mesmos 1.080 checkpoints, sem reajustar nenhum membro — as seções 1 a 12 são o EX_032, a seção 5 ganha três ensembles novos e as seções 13 a 16 fecham cinco das oito limitações listadas no artigo.
+This notebook is the whole benchmark behind the paper: 18 pretrained molecular representations used as frozen feature extractors, each with an L2-regularized logistic regression, plus five ensembles, evaluated in four paired settings — the chemically standardized dataset and the conventional canonical-SMILES dataset, each under a Bemis–Murcko scaffold split and a random stratified split, 5 folds × 3 seeds = 15 outer folds each.
 
-**O que a junção acrescenta, e por que ela é necessária para reproduzir o artigo.** As seções 7, 8 e 11 agregam *entre modelos*: média do Δ de cada modelo e Spearman entre os rankings. O resultado depende de quais modelos entram na conta, e os dois experimentos usam conjuntos diferentes — o EX_032 tem 22 modelos (18 representações + 4 ensembles) e o EX_033 tem 25, porque acrescentou Seleção gulosa (PR-AUC), Stacking (Platt) e Stacking (isotônica). Os números do artigo (Δ F1 de +0,042 e +0,022, Δ ROC-AUC de +0,041 e +0,024, a queda de −0,016 com 19 de 22 modelos piorando, e o Spearman mínimo de 0,948) são os de **22 modelos**. Rodar só o EX_033 dá +0,047, +0,024, −0,021 e Spearman mínimo de 0,862 — correto para 25 modelos, e diferente do texto.
+Sections 1 to 12 are the benchmark. Sections 13 to 16 are the analyses that close five of the eight limitations the paper lists: bootstrap confidence intervals and paired tests, stacking calibration and threshold-free member selection, the InChIKey collapse, and the label-conflict ablation. Nothing is refitted between the two parts: the same 18 encoders, the same 15 folds and the same 1,080 member checkpoints are reused throughout.
 
-Aqui as duas agregações são calculadas e impressas lado a lado, identificadas por conjunto, e salvas em `ex033_agregados_por_conjunto.csv`. Nada mais muda: as métricas por modelo, os ensembles, os intervalos de confiança e o conjunto externo são os do EX_033, modelo a modelo.
+**Two model sets, and why both are reported.** Sections 7, 8 and 11 aggregate *across models*: the mean Δ per model and the Spearman correlation between rankings. The result depends on which models enter the average, and this study grew by three ensembles along the way — Greedy (AP), Platt-calibrated stacking and isotonic-calibrated stacking. The paper quotes the **22-model** set (18 representations + 4 ensembles): Δ F1 of +0.042 and +0.0215, Δ ROC-AUC of +0.041 and +0.024, the −0.016 drop with 19 of 22 models declining, and the minimum Spearman of 0.948. Over all 25 models the same quantities are +0.047, +0.024, +0.042, +0.025, −0.021 with 22 of 25 declining, and a minimum Spearman of 0.862. Both are computed, printed side by side and saved to `across_model_aggregates_by_set.csv`. Everything else — per-model metrics, ensembles, confidence intervals, the external set — is model by model and does not depend on the choice.
 
-| Limitação do artigo | Onde é endereçada |
+| Limitation in the paper | Where it is addressed |
 |---|---|
-| (i) Sem IC nem teste pareado na base padronizada | Seção 13 |
-| (iii) Causa da queda da padronização não isolada | Seção 15 |
-| (iv) Os 82 conflitos de rótulo sem ablação | Seção 16 |
-| (v) Circularidade entre seleção gulosa e estudo do limiar | Seções 5 e 14 |
-| (vi) Stacking descalibrado | Seções 5 e 14 |
+| (i) No CI nor paired test on the standardized dataset | Section 13 |
+| (iii) Cause of the standardization drop not isolated | Section 15 |
+| (iv) The 82 label conflicts never ablated | Section 16 |
+| (v) Circularity between greedy selection and the threshold study | Sections 5 and 14 |
+| (vi) Uncalibrated stacking | Sections 5 and 14 |
 
-As limitações (ii) MAT e R-MAT, (vii) o conjunto externo não virgem e (viii) extrator fixo com classificador linear não são endereçadas aqui: a primeira depende de um pacote indisponível no ambiente, e as outras duas não se resolvem por computação.
+Limitations (ii) MAT and R-MAT, (vii) the external set is no longer unread, and (viii) frozen extractor with a linear head are not addressed here: the first depends on a package unavailable in this environment, and the other two cannot be settled by computation.
 
-Pipeline completo, baseado no EX_027:
+The pipeline:
 
-1. **Padronização química** da base de treino, removendo as duplicatas estruturais.
-2. **Embeddings** de 18 encoders para a base padronizada, com checkpoint em disco. MAT e R-MAT, do EX_027, ficam de fora porque o pacote que os gera (`huggingmolecules`) não está disponível no ambiente. A base não padronizada usa os embeddings do EX_027.
-3. **Regressão logística L2** por representação, com `C` escolhido por CV interna aninhada, em 5 folds × 3 seeds (42, 43, 44) = 15 folds. Métricas no limiar 0,5, em treino e teste.
-4. **Ensembles** com as 18 representações: soft voting, soft voting ponderado por ROC-AUC e stacking.
-5. **Avaliação dos ensembles** nas mesmas 15 folds.
-6. **Seleção gulosa** do ensemble, decidida só com a parte de treino de cada fold, comparada ao melhor modelo individual.
-7. **Ranking** por F1.
-8. **Scaffold x aleatório** em cada base.
-9. **Diversidade** do ensemble guloso (mapas de calor).
-10. **Estudo do limiar** entre 0,4 e 0,6.
-11. **Base padronizada x não padronizada.**
-12. **Validação externa:** o melhor individual e o melhor ensemble do split por scaffold, treinados com a base inteira, avaliados uma vez no conjunto externo (Precision@K, Recall@K e BEDROC), nas versões padronizada e não padronizada. O EX_033 **não lê o conjunto externo de novo**: os modelos finais não mudaram, então as predições do EX_032 são recarregadas do disco.
-13. **Bootstrap por scaffold e teste de Nadeau–Bengio** na base padronizada (limitação i).
-14. **Calibração do stacking e seleção gulosa sem limiar** (limitações vi e v).
-15. **Colapso por InChIKey** das predições da base não padronizada (limitação iii).
-16. **Ablação dos conflitos de rótulo** (limitação iv).
+1. **Chemical standardization** of the training set, merging structural duplicates.
+2. **Embeddings** from 18 encoders, checkpointed on disk. MAT and R-MAT are excluded because the package that produces them (`huggingmolecules`) is not available here. The unstandardized dataset reuses the embeddings computed for it earlier.
+3. **L2 logistic regression** per representation, with `C` chosen by nested inner CV, over 5 folds × 3 seeds (42, 43, 44) = 15 folds. Metrics at threshold 0.5, on train and test.
+4. **Ensembles** over the 18 representations: soft voting, ROC-AUC-weighted soft voting, and stacking.
+5. **Ensemble evaluation** on the same 15 folds.
+6. **Greedy selection**, decided inside each outer training fold only, compared against the best individual representation.
+7. **Ranking** by F1.
+8. **Scaffold vs random** in each dataset.
+9. **Diversity** of the greedy ensemble (heat maps).
+10. **Threshold sweep** from 0.40 to 0.60.
+11. **Standardized vs unstandardized dataset.**
+12. **External validation:** the best individual and the best ensemble of the scaffold split, refit on the full training set and read **once** on the external set (Precision@K, Recall@K, BEDROC), in both the standardized and the unstandardized version.
+13. **Scaffold bootstrap and the Nadeau–Bengio test** on the standardized dataset (limitation i).
+14. **Stacking calibration and threshold-free selection** (limitations vi and v).
+15. **InChIKey collapse** of the unstandardized predictions (limitation iii).
+16. **Label-conflict ablation** (limitation iv).
 
-Etapas 3 a 8 rodam nas duas bases e em dois protocolos de divisão: **scaffold** (esqueletos de Bemis–Murcko nunca aparecem em treino e teste ao mesmo tempo) e **aleatório estratificado**. As análises da seleção gulosa, da diversidade e do limiar (6, 9 e 10) usam só o split por scaffold, e o melhor modelo individual é o de maior F1 médio de teste no split por scaffold.
+Steps 3 to 8 run on both datasets and under both splits: **scaffold** (Bemis–Murcko skeletons never appear in train and test at the same time) and **random stratified**. The greedy, diversity and threshold analyses (6, 9 and 10) use the scaffold split only, and the best individual representation is the one with the highest mean test F1 under the scaffold split.
 """)
 
-md("## Configuração")
+md("""
+## Setup
+""")
 code("""
 import os
 import sys
@@ -95,11 +91,11 @@ from IPython.display import display
 from scipy.stats import spearmanr
 from sklearn.metrics import f1_score
 
-# ---- caminhos: este notebook roda de notebooks/ ------------------------------------------
-ROOT = os.path.abspath("..")                            # desenvolvimento_modelos/
+# ---- paths: this notebook runs from notebooks/ -------------------------------------------
+ROOT = os.path.abspath("..")                            # the repository root
 sys.path.insert(0, os.path.join(ROOT, "utils", "regressao_logistica"))
 import ex033_utils as U
-U = importlib.reload(U)   # kernel reaproveitado não pega edições do módulo sem o reload
+U = importlib.reload(U)   # a reused kernel will not pick up module edits without this
 
 BASE_ORIGINAL = os.path.join(ROOT, "dados", "Bases de dados", "Treinamento - limpas",
                              "Base_GeroLLM_reconstruida", "primary_dataset_dedup.csv")
@@ -109,14 +105,14 @@ BASE_PADRONIZADA = os.path.join(DIR_BASE, "primary_padronizada.csv")
 QUIMICA_ORIGINAL = os.path.join(DIR_BASE, "padronizacao_linhas_originais.csv")
 QUIMICA_PADRONIZADA = os.path.join(DIR_BASE, "padronizacao_base_padronizada.csv")
 
-# Pastas dos embeddings: um .npy por encoder. A base não padronizada usa os do EX_027.
+# Embedding folders: one .npy per encoder, per dataset.
 DIR_EMBEDDINGS = {
     "padronizada": os.path.join(ROOT, "dados", "Embeddings_salvos", "Embeddings_GeroLLM_padronizada"),
     "original": os.path.join(ROOT, "dados", "Embeddings_salvos", "Embeddings_GeroLLM"),
 }
 SCRIPT_EMBEDDINGS = os.path.join(ROOT, "utils", "embeddings", "gerar_embeddings_base.py")
-# Os encoders rodam no env `embeddings` (torch, transformers, torch_geometric, gensim,
-# selfies, unimol_tools); este notebook roda no env PIBIC.
+# The encoders run in the `embeddings` conda environment (torch, transformers,
+# torch_geometric, gensim, selfies, unimol_tools); this notebook runs in the analysis one.
 PYTHON_EMBEDDINGS = os.path.expanduser("~/miniconda3/envs/embeddings/bin/python")
 
 RESULTS_DIR = os.path.join(ROOT, "resultados")
@@ -130,48 +126,48 @@ def out(nome):
     return os.path.join(pasta, nome)
 
 
-# ---- protocolo ---------------------------------------------------------------------------
+# ---- protocol ----------------------------------------------------------------------------
 SEEDS = (42, 43, 44)
 N_SPLITS = 5
-C_GRID = np.logspace(-4, 2, 7)          # mesmo grid do EX_027
+C_GRID = np.logspace(-4, 2, 7)          # 1e-4 .. 1e2, seven values
 BASES = ["padronizada", "original"]
 NOME_BASE = {"padronizada": "base padronizada", "original": "base não padronizada"}
 PROTOCOLOS = ["scaffold", "aleatorio"]
 NOME_PROTOCOLO = {"scaffold": "split por scaffold", "aleatorio": "split aleatório estratificado"}
 CENARIOS = [(base, protocolo) for base in BASES for protocolo in PROTOCOLOS]
-N_JOBS = 5                               # folds internos em paralelo
+N_JOBS = 5                               # inner folds in parallel
 
-ENCODERS = {  # nome no estudo -> chave do arquivo de embedding
+ENCODERS = {  # name in the study -> key of the embedding file
     "MolFormer-XL": "molformer", "SELFormer": "selformer", "ChemBERTa-2": "chembert",
     "ChemBERTa-3": "chemberta3", "MolDeBERTa": "moldeberta", "MolCLR": "molclr",
     "Mole-BERT": "molebert", "GIN": "gin", "GraphMVP": "graphmvp", "Uni-Mol": "unimol",
     "ECFP4-2048": "ecfp4", "Atom-Pair": "atompair", "Graph-FP": "graphfp", "TT": "tt",
     "Mol2Vec": "mol2vec", "ChemGPT": "chemgpt", "ChemFM": "chemfm", "CLAMP": "clamp",
 }
-# MAT e R-MAT (EX_027) ficam de fora: dependem do pacote huggingmolecules, que só existe no
-# GitHub e não está instalado no env `embeddings`. Para incluí-los, instale o pacote e
-# acrescente "MAT": "mat" e "R-MAT": "rmat" acima.
+# MAT and R-MAT are left out: they depend on the huggingmolecules package, which only exists
+# on GitHub and is not installed in the `embeddings` environment. To include them, install the
+# package and add "MAT": "mat" and "R-MAT": "rmat" above.
 BINARIOS = {"ECFP4-2048", "Atom-Pair", "Graph-FP", "TT"}
 
 
 def arquivos_embedding(base, chave):
-    \"\"\"Caminhos do embedding e dos rótulos de um encoder em uma base.\"\"\"
+    \"\"\"Paths of the embedding matrix and of the labels of one encoder in one dataset.\"\"\"
     pasta = DIR_EMBEDDINGS[base]
-    if base == "original" and chave == "ecfp4":      # no EX_027 o ECFP4 tem outro nome
+    if base == "original" and chave == "ecfp4":      # this cut stores ECFP4 under another name
         return os.path.join(pasta, "fingerprints.npy"), os.path.join(pasta, "rotulos_fingerprints.npy")
     return os.path.join(pasta, f"Embeddings_{chave}.npy"), os.path.join(pasta, f"rotulos_{chave}.npy")
 """)
 
 # ---------------------------------------------------------------------------- 1
 md("""
-## 1. Obtenção da base e padronização química
+## 1. Dataset and chemical standardization
 
-Cada SMILES passa pela padronização do EX_027 com RDKit: limpeza, remoção de sais e solventes (fragmento pai), neutralização e tautômero canônico. Linhas com o mesmo InChIKey padronizado são a mesma substância e viram **uma linha só**:
+Every SMILES goes through RDKit standardization: cleanup, removal of salts and solvents (fragment parent), uncharging, and canonical tautomer. Rows sharing a standardized InChIKey are the same substance and are merged into **a single row**:
 
-- o SMILES passa a ser o tautômero canônico padronizado;
-- o rótulo é positivo se qualquer forma for positiva (mesma regra que a base usa para conflitos entre fontes).
+- the SMILES becomes the standardized canonical tautomer;
+- the label is positive if any form is positive, the same rule the dataset already uses for conflicts between sources.
 
-A base não padronizada é a base original do EX_027, com as duplicatas estruturais. O resultado da padronização fica salvo em CSV; rodar de novo carrega o arquivo.
+The unstandardized dataset is the conventional one, with its structural duplicates. The standardization result is cached as a CSV; re-running loads the file instead of recomputing it.
 """)
 code("""
 os.makedirs(DIR_BASE, exist_ok=True)
@@ -179,33 +175,33 @@ original = pd.read_csv(BASE_ORIGINAL)
 if os.path.exists(BASE_PADRONIZADA):
     padronizada = pd.read_csv(BASE_PADRONIZADA)
     quimica_original = pd.read_csv(QUIMICA_ORIGINAL)
-    print(f"[checkpoint] base padronizada carregada de {os.path.basename(BASE_PADRONIZADA)}")
+    print(f"[checkpoint] standardized dataset loaded from {os.path.basename(BASE_PADRONIZADA)}")
 else:
     padronizada, quimica_original, _ = U.padronizar_base(original)
     padronizada.to_csv(BASE_PADRONIZADA, index=False)
     quimica_original.to_csv(QUIMICA_ORIGINAL, index=False)
 
-resumo = {
-    "linhas na base original": len(original),
-    "substâncias distintas (base padronizada)": len(padronizada),
-    "linhas removidas como duplicata": len(original) - len(padronizada),
-    "substâncias que reuniam mais de uma linha": int((padronizada["n_formas"] > 1).sum()),
-    "substâncias com rótulos conflitantes (viraram positivas)": int(padronizada["rotulo_conflitante"].sum()),
-    "positivos antes / depois": f"{int(original['label'].sum())} / {int(padronizada['label'].sum())}",
-    "prevalência depois": f"{padronizada['label'].mean():.2%}",
+summary = {
+    "rows in the unstandardized dataset": len(original),
+    "distinct substances (standardized dataset)": len(padronizada),
+    "rows merged as duplicates": len(original) - len(padronizada),
+    "substances that merged more than one row": int((padronizada["n_formas"] > 1).sum()),
+    "substances with conflicting labels (resolved positive)": int(padronizada["rotulo_conflitante"].sum()),
+    "positives before / after": f"{int(original['label'].sum())} / {int(padronizada['label'].sum())}",
+    "prevalence after": f"{padronizada['label'].mean():.2%}",
 }
-display(pd.Series(resumo, name="valor").to_frame())
+display(pd.Series(summary, name="value").to_frame())
 """)
 code("""
-# Quantas duplicatas cada etapa da padronização revelou (mesma auditoria do EX_027)
+# How many duplicates each standardization step revealed
 display(U.duplicate_audit(quimica_original))
 exemplos = padronizada.query("n_formas > 1").head(8)[["smiles", "smiles_original", "label", "n_formas",
                                                         "rotulo_conflitante", "name"]]
 display(exemplos)
 """)
 code("""
-# Grupos de scaffold, usados pelo split por scaffold. Na base não padronizada são os mesmos
-# grupos do EX_027 (calculados linha a linha sobre a base original).
+# Scaffold groups, used by the scaffold split. In the unstandardized dataset they are
+# computed row by row, before any merging.
 if os.path.exists(QUIMICA_PADRONIZADA):
     quimica = pd.read_csv(QUIMICA_PADRONIZADA)
 else:
@@ -214,35 +210,37 @@ else:
 assert len(quimica) == len(padronizada) and len(quimica_original) == len(original)
 repetidos = int(quimica["L5_inchikey"].duplicated().sum())
 if repetidos:
-    print(f"Aviso: {repetidos} compostos ainda colidem ao repadronizar o SMILES padronizado.")
+    print(f"Warning: {repetidos} compounds still collide when the standardized SMILES is re-standardized.")
 
 Y = {"padronizada": padronizada["label"].astype(int).to_numpy(),
      "original": original["label"].astype(int).to_numpy()}
 GRUPOS = {"padronizada": quimica["group"].to_numpy(),
           "original": quimica_original["group"].to_numpy()}
 for base in BASES:
-    print(f"{NOME_BASE[base]}: {len(Y[base])} compostos, {Y[base].sum()} positivos "
-          f"({Y[base].mean():.2%}), {len(np.unique(GRUPOS[base]))} grupos de scaffold")
+    print(f"{NOME_BASE[base]}: {len(Y[base])} compounds, {Y[base].sum()} positives "
+          f"({Y[base].mean():.2%}), {len(np.unique(GRUPOS[base]))} scaffold groups")
 """)
 
 # ---------------------------------------------------------------------------- 2
 md("""
 ## 2. Embeddings
 
-Um arquivo `.npy` por encoder na pasta de checkpoints da base padronizada. Ao rodar:
+One `.npy` file per encoder in the embeddings folder of each dataset. When this cell runs:
 
-- se a pasta estiver vazia ou incompleta, os embeddings que faltam são gerados;
-- se estiver completa, o notebook **pergunta** se os embeddings devem ser gerados de novo (`s`) ou reaproveitados (Enter).
+- if the folder is empty or incomplete, the missing embeddings are generated;
+- if it is complete, the notebook **asks** whether to regenerate them (`y`) or reuse them (Enter).
 
-Para rodar sem pergunta (por exemplo com `nbconvert`), defina `REGERAR_EMBEDDINGS` como `True` ou `False`, ou a variável de ambiente `EX033_REGERAR=1`/`0`.
+To run unattended (with `nbconvert`, for instance), set `REGENERATE_EMBEDDINGS` to `True` or `False`, or the environment variable `REGENERATE_EMBEDDINGS=1`/`0`.
 
-A geração roda no env `embeddings`, por um script separado (`utils/embeddings/gerar_embeddings_base.py`), com as mesmas funções que geraram os embeddings do EX_027. A base não padronizada usa esses embeddings do EX_027, que já estão em disco.
+Generation runs in the `embeddings` conda environment through a separate script
+(`utils/embeddings/generate_embeddings.py`), with the same functions that produced the
+embeddings in the first place. Each encoder is a checkpoint, so an interrupted run resumes.
 """)
 code("""
-REGERAR_EMBEDDINGS = None      # None = perguntar; True = gerar tudo de novo; False = reaproveitar
+REGENERATE_EMBEDDINGS = None   # None = ask; True = regenerate everything; False = reuse
 
-if os.environ.get("EX033_REGERAR") in ("0", "1"):
-    REGERAR_EMBEDDINGS = os.environ["EX033_REGERAR"] == "1"
+if os.environ.get("REGENERATE_EMBEDDINGS") in ("0", "1"):
+    REGENERATE_EMBEDDINGS = os.environ["REGENERATE_EMBEDDINGS"] == "1"
 
 
 def embedding_pronto(base, chave):
@@ -252,35 +250,35 @@ def embedding_pronto(base, chave):
 
 prontos = [n for n, chave in ENCODERS.items() if embedding_pronto("padronizada", chave)]
 faltando = [n for n in ENCODERS if n not in prontos]
-print(f"Pasta: {DIR_EMBEDDINGS['padronizada']}")
-print(f"{len(prontos)} de {len(ENCODERS)} encoders com embeddings completos para a base padronizada.")
+print(f"Folder: {DIR_EMBEDDINGS['padronizada']}")
+print(f"{len(prontos)} of {len(ENCODERS)} encoders have complete embeddings for the standardized dataset.")
 
-if REGERAR_EMBEDDINGS is None and prontos:
-    resposta = input(f"Gerar os embeddings de novo? {len(prontos)} prontos, "
-                     f"{len(faltando)} faltando. [s = gerar tudo / Enter = reaproveitar] ")
-    REGERAR_EMBEDDINGS = resposta.strip().lower() in ("s", "sim", "y", "yes")
+if REGENERATE_EMBEDDINGS is None and prontos:
+    resposta = input(f"Regenerate the embeddings? {len(prontos)} ready, "
+                     f"{len(faltando)} missing. [y = regenerate all / Enter = reuse] ")
+    REGENERATE_EMBEDDINGS = resposta.strip().lower() in ("y", "yes")
 
-a_gerar = list(ENCODERS) if REGERAR_EMBEDDINGS else faltando
+a_gerar = list(ENCODERS) if REGENERATE_EMBEDDINGS else faltando
 if a_gerar:
     comando = [PYTHON_EMBEDDINGS, SCRIPT_EMBEDDINGS, "--csv", BASE_PADRONIZADA,
                "--coluna", "smiles", "--rotulo", "label", "--saida", DIR_EMBEDDINGS["padronizada"],
-               "--encoders", *a_gerar] + (["--forcar"] if REGERAR_EMBEDDINGS else [])
-    print("Gerando:", ", ".join(a_gerar))
+               "--encoders", *a_gerar] + (["--force"] if REGENERATE_EMBEDDINGS else [])
+    print("Generating:", ", ".join(a_gerar))
     processo = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for linha in processo.stdout:
-        if linha.startswith(("[ok]", "[erro]", "[checkpoint]", "Resumo")):
+        if linha.startswith(("[ok]", "[error]", "[checkpoint]", "Summary")):
             print(linha, end="")
     processo.wait()
 else:
-    print("Reaproveitando os embeddings da pasta.")
+    print("Reusing the embeddings already on disk.")
 """)
 code("""
-# Só entram os encoders com embedding nas duas bases, para que a comparação use as mesmas
-# representações.
+# Only encoders with embeddings in both datasets take part, so that the comparison uses the
+# same representations throughout.
 NOMES = [n for n, chave in ENCODERS.items() if all(embedding_pronto(b, chave) for b in BASES)]
 ausentes = [n for n in ENCODERS if n not in NOMES]
 if ausentes:
-    print(f"ATENÇÃO: {len(ausentes)} encoder(s) sem embedding e fora das próximas etapas: {ausentes}")
+    print(f"WARNING: {len(ausentes)} encoder(s) without embeddings, dropped from what follows: {ausentes}")
 
 X = {base: {} for base in BASES}
 for base in BASES:
@@ -294,16 +292,16 @@ display(pd.DataFrame({NOME_BASE[b]: {n: X[b][n].shape[1] for n in NOMES} for b i
 
 # ---------------------------------------------------------------------------- 3
 md("""
-## 3. Regressão logística L2 por representação
+## 3. L2 logistic regression per representation
 
-- **Modelo:** regressão logística com penalidade L2 (soma dos quadrados dos coeficientes), `class_weight="balanced"` e padronização dos dados; nos fingerprints, bits presentes em menos de 1% dos compostos são removidos antes.
-- **Escolha de C:** dentro de cada fold externo, uma CV interna de 5 folds (só com a parte de treino) escolhe `C` no grid 10⁻⁴ a 10² pelo ROC-AUC.
-- **Validação:** 5 folds × 3 seeds = 15 folds, nos dois protocolos e nas duas bases.
-- **Métricas:** accuracy, recall, precision, F1, balanced accuracy e MCC no limiar 0,5, mais ROC-AUC e AP (área sob a curva precision-recall), que não dependem de limiar, em treino e teste.
+- **Model:** logistic regression with an L2 penalty, `class_weight="balanced"` and standardized features; for the four binary fingerprints, bits present in fewer than 1% of the training molecules are dropped first.
+- **Choosing C:** inside each outer training fold, an inner 5-fold CV selects `C` over the grid 10⁻⁴ to 10² by ROC-AUC.
+- **Validation:** 5 folds × 3 seeds = 15 outer folds, under both splits and on both datasets.
+- **Metrics:** accuracy, recall, precision, F1, balanced accuracy and MCC at threshold 0.5, plus ROC-AUC and average precision (the area under the precision-recall curve), which are threshold-free, on train and test.
 
-Antes dos ajustes, uma verificação explícita do split por scaffold: em cada fold, conta quantos grupos de scaffold aparecem no treino e no teste ao mesmo tempo. No scaffold esse número tem de ser zero (o notebook para se não for); no aleatório ele mostra quantos esqueletos o teste compartilha com o treino.
+Before any fit, an explicit audit of the scaffold split: for every fold, how many scaffold groups appear in train and test at the same time. Under the scaffold split that count must be zero and the notebook stops if it is not; under the random split it shows how many skeletons the test fold shares with training.
 
-Cada ajuste fica salvo em checkpoint.
+Every fit is checkpointed.
 """)
 code("""
 folds = {}
@@ -313,16 +311,16 @@ for base in BASES:
                                                           seeds=SEEDS)
 indices = {c: {(s, k): (tr, te) for s, k, tr, te in folds[c]} for c in CENARIOS}
 
-# Verificação de vazamento de scaffold: nenhum esqueleto pode estar em treino e teste no scaffold
+# Scaffold leakage audit: under the scaffold split no skeleton may be in train and test at once
 verificacao = pd.concat([U.scaffolds_compartilhados(folds[(b, p)], GRUPOS[b]).assign(
     base=NOME_BASE[b], protocolo=NOME_PROTOCOLO[p]) for b, p in CENARIOS], ignore_index=True)
 verificacao.to_csv(out("ex033_verificacao_scaffold.csv"), index=False)
-resumo = verificacao.groupby(["base", "protocolo"])[["scaffolds no teste", "scaffolds em treino e teste"]].agg(["mean", "std", "max"])
-print("Scaffolds compartilhados entre treino e teste, por fold (15 folds)")
+resumo = verificacao.groupby(["dataset", "protocol"])[["scaffolds in test", "scaffolds in train and test"]].agg(["mean", "std", "max"])
+print("Scaffolds shared between train and test, per fold (15 folds)")
 display(resumo.round(2))
-no_scaffold = verificacao[verificacao["protocolo"] == NOME_PROTOCOLO["scaffold"]]
-assert no_scaffold["scaffolds em treino e teste"].eq(0).all(), "vazamento de scaffold"
-print("OK: no split por scaffold, nenhum esqueleto aparece em treino e teste ao mesmo tempo.")
+no_scaffold = verificacao[verificacao["protocol"] == NOME_PROTOCOLO["scaffold"]]
+assert no_scaffold["scaffolds in train and test"].eq(0).all(), "scaffold leakage"
+print("OK: under the scaffold split, no skeleton appears in train and test at the same time.")
 
 membros = {}
 for base, protocolo in CENARIOS:
@@ -330,8 +328,8 @@ for base, protocolo in CENARIOS:
         X[base], Y[base], folds[(base, protocolo)], NOMES, BINARIOS, C_GRID, checkpoints, protocolo,
         grupos=GRUPOS[base] if protocolo == "scaffold" else None, n_jobs=N_JOBS,
         prefixo=f"{base}_{protocolo}")
-    print(f"{NOME_BASE[base]}, {protocolo}: {len(membros[(base, protocolo)])} modelos "
-          f"(15 folds x {len(NOMES)} representações)")
+    print(f"{NOME_BASE[base]}, {protocolo}: {len(membros[(base, protocolo)])} fits "
+          f"(15 folds x {len(NOMES)} representations)")
 
 metricas_individuais = pd.concat(
     [U.tabela_metricas(Y[b], indices[(b, p)], membros[(b, p)], p, b) for b, p in CENARIOS],
@@ -340,15 +338,15 @@ metricas_individuais.to_csv(out("ex033_metricas_individuais_por_fold.csv"), inde
 """)
 code("""
 def mostrar_por_fold(tabela, modelo):
-    \"\"\"Métricas de um modelo em cada fold, treino e teste, e a média e o desvio-padrão das 15 folds.\"\"\"
+    \"\"\"Per-fold metrics of one model, train and test, plus the mean and sd over the 15 folds.\"\"\"
     for base, protocolo in CENARIOS:
         parte = tabela.query("base == @base and protocolo == @protocolo and modelo == @modelo")
         largo = parte.pivot_table(index=["seed", "fold"], columns="parte", values=U.METRICAS)
         largo.columns = [f"{U.NOMES_METRICAS[m]} ({p})" for m, p in largo.columns]
-        largo = largo[[f"{U.NOMES_METRICAS[m]} ({p})" for m in U.METRICAS for p in ("treino", "teste")]]
+        largo = largo[[f"{U.NOMES_METRICAS[m]} ({p})" for m in U.METRICAS for p in ("train", "test")]]
         media, desvio = largo.mean(), largo.std()
-        largo.loc[("média", ""), :] = media
-        largo.loc[("desvio-padrão", ""), :] = desvio
+        largo.loc[("mean", ""), :] = media
+        largo.loc[("standard deviation", ""), :] = desvio
         print(f"{modelo} — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]}")
         display(largo.round(4))
 
@@ -365,48 +363,48 @@ for base, protocolo in CENARIOS:
                    .set_index("modelo").sort_values("f1_mean", ascending=False))
         tabela = pd.DataFrame({U.NOMES_METRICAS[m]: U.media_dp(selecao[f"{m}_mean"], selecao[f"{m}_std"])
                                for m in U.METRICAS})
-        print(f"Média ± desvio-padrão das 15 folds — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]} — {parte}")
+        print(f"Mean ± sd over the 15 folds — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]} — {parte}")
         display(tabela)
 """)
 md("""
-### 3.1 Modelos finais com todos os dados
+### 3.1 Final models on the full dataset
 
-Cada representação é treinada com a base padronizada inteira (a base não padronizada serve só para comparação e não ganha modelos finais). O `C` e as probabilidades out-of-fold que alimentam os ensembles finais (pesos, meta-modelo e seleção gulosa) vêm de uma CV de 5 folds por scaffold sobre a base inteira. Os modelos ficam salvos para uso nos ensembles e em predições futuras.
+Each representation is refit on the whole standardized dataset; the unstandardized dataset only serves as a comparison and gets its final models in section 12. The `C` values and the out-of-fold probabilities that feed the final ensembles (weights, meta-model and greedy subset) come from a 5-fold scaffold CV over the full dataset. The models are saved for use in the ensembles and in later predictions.
 """)
 code("""
 if os.path.exists(MODELOS_FINAIS):
     finais = joblib.load(MODELOS_FINAIS)
-    print(f"[checkpoint] modelos finais carregados de {os.path.basename(MODELOS_FINAIS)}")
+    print(f"[checkpoint] final models loaded from {os.path.basename(MODELOS_FINAIS)}")
 else:
     finais = U.treinar_finais(X["padronizada"], Y["padronizada"], NOMES, BINARIOS, C_GRID,
                               GRUPOS["padronizada"], n_jobs=N_JOBS)
     os.makedirs(os.path.dirname(MODELOS_FINAIS), exist_ok=True)
     joblib.dump(finais, MODELOS_FINAIS)
-display(pd.DataFrame({"C": finais["C"], "peso no soft ponderado": finais["pesos_roc_auc"]}).round(4))
-print("Membros da seleção gulosa final:", finais["membros_gulosos"])
+display(pd.DataFrame({"C": finais["C"], "weight in the weighted vote": finais["pesos_roc_auc"]}).round(4))
+print("Members of the final greedy ensemble:", finais["membros_gulosos"])
 """)
 
 # ---------------------------------------------------------------------------- 4
 md("""
-## 4. Ensembles com as 18 representações
+## 4. Ensembles over the 18 representations
 
-1. **Soft voting:** média das probabilidades dos modelos.
-2. **Soft voting ponderado por ROC-AUC:** média ponderada pelo ROC-AUC de cada modelo na CV interna (parte de treino), com os pesos somando 1.
-3. **Stacking:** meta-modelo (regressão logística L2, `C=1`, `class_weight="balanced"`) treinado nas probabilidades out-of-fold internas dos modelos, ou seja, em predições de compostos que cada modelo não viu.
+1. **Soft voting:** the mean of the member probabilities.
+2. **Weighted soft voting (ROC-AUC):** that mean weighted by each member's inner-CV ROC-AUC, measured on the training part only, with weights summing to 1.
+3. **Stacking:** a meta-model (L2 logistic regression, `C=1`, `class_weight="balanced"`) fitted on the members' inner out-of-fold probabilities, that is, on predictions for compounds each member has not seen.
 
-O EX_033 acrescenta três ensembles:
+Three more ensembles complete the set:
 
-4. **Stacking (isotônica)** e **5. Stacking (Platt):** o mesmo meta-modelo, com um calibrador ajustado **dentro do fold**, nas probabilidades out-of-fold internas do próprio meta-modelo. O `class_weight="balanced"` desloca as probabilidades do stacking para cima, e no limiar 0,5 ele classifica positivo demais: tem o maior ROC-AUC entre os ensembles e o menor F1. A calibração é uma transformação monótona, então **ROC-AUC e PR-AUC não mudam** — o que muda é onde o limiar 0,5 cai. A isotônica não impõe forma funcional; a de Platt ajusta uma sigmoide de um parâmetro e é mais estável com poucos positivos.
-6. **Seleção gulosa (PR-AUC):** a mesma busca gulosa, mas maximizando a PR-AUC das probabilidades médias em vez do F1 no limiar 0,5. A versão por F1 deixa o escore interno otimizado em 0,5, o que torna o estudo do limiar circular para esse ensemble (seção 10). A PR-AUC não depende de limiar e é a métrica de ranking mais próxima do uso em triagem, com prevalência de 17%.
+4. **Stacking (isotonic)** and 5. **Stacking (Platt):** the same meta-model with a calibrator fitted **inside the fold**, on the meta-model's own inner out-of-fold scores. `class_weight="balanced"` shifts the stacking probabilities upward, so at threshold 0.5 it predicts positive too often: it has the highest ROC-AUC among the ensembles and the lowest F1. Calibration is a monotone map, so **ROC-AUC and average precision do not change** — what changes is where 0.5 falls. Isotonic regression imposes no functional form; Platt scaling fits a one-parameter sigmoid and is steadier with few positives.
+6. **Greedy (AP):** the same greedy search, maximizing the average precision of the averaged probabilities instead of F1 at threshold 0.5. The F1 variant leaves the inner score optimized exactly at 0.5, which makes the threshold study circular for that ensemble (section 10). Average precision needs no threshold and is the ranking metric closest to screening use at 17% prevalence.
 
-Em todos, pesos, meta-modelo, calibrador e subconjunto são definidos só com a parte de treino de cada fold.
+In all of them the weights, the meta-model, the calibrator and the subset are decided from the training part of each fold alone.
 """)
 
 # ---------------------------------------------------------------------------- 5
 md("""
-## 5. Avaliação dos ensembles nas 15 folds
+## 5. Ensemble evaluation on the 15 folds
 
-As mesmas 15 folds e as mesmas métricas dos modelos individuais, no limiar 0,5, em treino e teste, nas duas bases e nos dois protocolos. A seleção gulosa (seção 6) é calculada junto.
+The same 15 folds and the same metrics as the individual models, at threshold 0.5, on train and test, in both datasets and under both splits. Greedy selection (section 6) is computed here as well.
 """)
 code("""
 ensembles = {}
@@ -434,55 +432,55 @@ for base, protocolo in CENARIOS:
     tabela = pd.DataFrame({f"{U.NOMES_METRICAS[m]} ({p})": U.media_dp(selecao.loc[p, f"{m}_mean"],
                                                                      selecao.loc[p, f"{m}_std"])
                            for m in U.METRICAS for p in ("teste", "treino")})
-    print(f"Média ± desvio-padrão das 15 folds — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]}")
+    print(f"Mean ± sd over the 15 folds — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]}")
     display(tabela)
 """)
 
 # ---------------------------------------------------------------------------- 6
 md("""
-## 6. Seleção gulosa (split por scaffold)
+## 6. Greedy selection (scaffold split)
 
-Dentro de cada fold, a busca adiciona uma representação por vez ao soft voting, escolhendo a que mais aumenta o F1 (limiar 0,5) nas probabilidades out-of-fold internas da parte de treino, e fica com o melhor passo. O teste do fold não é usado na escolha.
+Inside each fold, the search adds one representation at a time to the soft-voting average, picking the one that most increases F1 (at threshold 0.5) on the inner out-of-fold probabilities of the training part, and keeps the best step along the path. The test fold never informs the choice.
 
-A análise usa o split por scaffold. A referência é o **melhor modelo individual no split por scaffold** (maior F1 médio de teste nas 15 folds), em cada base:
+The analysis uses the scaffold split. The reference is the **best individual representation under the scaffold split** (highest mean test F1 over the 15 folds) in each dataset:
 
-- a tabela compara o ensemble guloso com esse modelo no teste;
-- no gráfico do caminho, a linha tracejada é o F1 interno médio desse modelo, medido nas mesmas probabilidades out-of-fold internas que guiam a busca.
+- the table compares the greedy ensemble against that model on the test folds;
+- in the path plot, the dashed line is that model's mean inner F1, measured on the same inner out-of-fold probabilities that guide the search.
 """)
 code("""
 melhor_individual = {}
 for base in BASES:
     teste = media_individuais.query("base == @base and protocolo == 'scaffold' and parte == 'teste'")
     melhor_individual[base] = teste.set_index("modelo")["f1_mean"].idxmax()
-    print(f"Melhor individual no split por scaffold — {NOME_BASE[base]}: {melhor_individual[base]}")
+    print(f"Best individual representation, scaffold split — {NOME_BASE[base]}: {melhor_individual[base]}")
 
 frequencias, consenso = {}, {}
 for base in BASES:
     cenario = (base, "scaffold")
     frequencias[base] = U.frequencia_selecao(ensembles[cenario], NOMES)
-    tamanhos = [len(r["membros"]) for (s, k, m), r in ensembles[cenario].items() if m == "Seleção gulosa"]
-    print(f"{NOME_BASE[base]}: {len(tamanhos)} folds, tamanho mediano {np.median(tamanhos):.0f} "
-          f"(de {min(tamanhos)} a {max(tamanhos)} membros)")
-    consenso[base] = frequencias[base].query("frequencia >= 0.5").index.tolist()
-tabela = pd.concat({NOME_BASE[b]: frequencias[b]["frequencia"] for b in BASES}, axis=1)
+    tamanhos = [len(r["members"]) for (s, k, m), r in ensembles[cenario].items() if m == "Greedy (F1)"]
+    print(f"{NOME_BASE[base]}: {len(tamanhos)} folds, median subset size {np.median(tamanhos):.0f} "
+          f"(from {min(tamanhos)} to {max(tamanhos)} members)")
+    consenso[base] = frequencias[base].query("frequency >= 0.5").index.tolist()
+tabela = pd.concat({NOME_BASE[b]: frequencias[b]["frequency"] for b in BASES}, axis=1)
 tabela.to_csv(out("ex033_frequencia_gulosa_scaffold.csv"))
 display(tabela.sort_values(NOME_BASE["padronizada"], ascending=False).round(3))
 for base in BASES:
-    print(f"Membros de consenso ({NOME_BASE[base]}, escolhidos em >= 50% das folds): {consenso[base]}")
+    print(f"Consensus members ({NOME_BASE[base]}, selected in >= 50% of the folds): {consenso[base]}")
 """)
 code("""
 linhas = []
 for base in BASES:
-    for modelo, tipo in ((melhor_individual[base], "melhor individual"), ("Seleção gulosa", "ensemble guloso")):
-        fonte = media_ensembles if modelo == "Seleção gulosa" else media_individuais
-        linha = fonte.query("base == @base and protocolo == 'scaffold' and parte == 'teste' "
-                            "and modelo == @modelo").iloc[0]
-        linhas.append({"base": NOME_BASE[base], "tipo": tipo, "modelo": modelo,
+    for modelo, tipo in ((melhor_individual[base], "best individual"), ("Greedy (F1)", "greedy ensemble")):
+        fonte = media_ensembles if modelo == "Greedy (F1)" else media_individuais
+        linha = fonte.query("dataset == @base and protocol == 'scaffold' and part == 'test' "
+                            "and model == @modelo").iloc[0]
+        linhas.append({"dataset": NOME_BASE[base], "kind": tipo, "model": modelo,
                        **{U.NOMES_METRICAS[m]: f"{linha[f'{m}_mean']:.4f} ± {linha[f'{m}_std']:.4f}"
                           for m in U.METRICAS}})
 guloso_x_individual = pd.DataFrame(linhas)
 guloso_x_individual.to_csv(out("ex033_guloso_x_melhor_individual_scaffold.csv"), index=False)
-print("Teste, split por scaffold (média ± desvio-padrão das 15 folds)")
+print("Test folds, scaffold split (mean ± sd over the 15 folds)")
 display(guloso_x_individual)
 """)
 code("""
@@ -490,20 +488,20 @@ fig, axes = plt.subplots(1, len(BASES), figsize=(7 * len(BASES), 4), sharey=True
 for ax, base in zip(axes, BASES):
     cenario = (base, "scaffold")
     for (seed, k, nome), registro in ensembles[cenario].items():
-        if nome == "Seleção gulosa":
-            caminho = registro["caminho"]
-            ax.plot(caminho["n_membros"], caminho["f1_interno"], color="tab:blue", alpha=0.35)
+        if nome == "Greedy (F1)":
+            caminho = registro["path"]
+            ax.plot(caminho["n_members"], caminho["f1_inner"], color="tab:blue", alpha=0.35)
     f1_interno_melhor = np.mean([
         f1_score(Y[base][tr], (membros[cenario][(s, k, melhor_individual[base])]["inner_oof"]
                                >= U.LIMIAR_PADRAO).astype(int), zero_division=0)
         for (s, k), (tr, te) in indices[cenario].items()])
     ax.axhline(f1_interno_melhor, color="tab:red", ls="--", lw=1.5,
-               label=f"melhor individual ({melhor_individual[base]})")
-    ax.set_title(f"Caminho da seleção gulosa — {NOME_BASE[base]}, scaffold")
-    ax.set_xlabel("número de membros")
+               label=f"best individual ({melhor_individual[base]})")
+    ax.set_title(f"Greedy selection path — {NOME_BASE[base]}, scaffold")
+    ax.set_xlabel("number of members")
     ax.grid(alpha=0.3)
     ax.legend(loc="lower right")
-axes[0].set_ylabel("F1 interno (parte de treino)")
+axes[0].set_ylabel("inner F1 (training part)")
 fig.tight_layout()
 fig.savefig(out("ex033_caminho_guloso_scaffold.png"), dpi=150, bbox_inches="tight")
 plt.show()
@@ -513,76 +511,76 @@ plt.show()
 md("""
 ## 7. Ranking
 
-Modelos individuais, os três ensembles com todas as representações e os ensembles gulosos, ordenados pelo F1 médio de teste das 15 folds (limiar 0,5), em cada base e protocolo.
+Individual models, the three all-representation ensembles and the two greedy ensembles, ordered by mean test F1 over the 15 folds (threshold 0.5), in each dataset and under each split.
 
-A coluna **posição** é entre os 25 modelos; **posição (22 do artigo)** é entre os 22 do EX_032, que é a que o artigo cita. Elas divergem para quem está abaixo de um dos três ensembles novos: o Graph-FP, por exemplo, é 15º entre os 22 e 16º entre os 25.
+The **rank** column is among all 25 models; **rank (paper's 22)** is among the 22 the paper quotes. They differ for anything below one of the three later ensembles: Graph-FP, for instance, is 15th among the 22 and 16th among the 25.
 """)
 code("""
 media_todos = pd.concat([media_individuais, media_ensembles], ignore_index=True)
 
-# Conjuntos de modelos das agregações entre modelos (seções 7, 8 e 11). O artigo cita os
-# números de 22 modelos, que é o conjunto do EX_032; o de 25 inclui os três ensembles que o
-# EX_033 acrescentou. Os dois são calculados em toda agregação, e o conjunto vai na saída.
+# Model sets for the across-model aggregations (sections 7, 8 and 11). The paper quotes the
+# 22-model numbers; the 25-model set adds the three later ensembles. Both are computed in every
+# aggregation, and the set is named in the output.
 TODOS_OS_MODELOS = sorted(media_todos["modelo"].unique())
 MODELOS_22 = [m for m in TODOS_OS_MODELOS if m not in U.ENSEMBLES_NOVOS]
-CONJUNTOS = {"22 (do artigo)": MODELOS_22, "25 (completo)": TODOS_OS_MODELOS}
-agregados = []        # preenchido nas seções 8 e 11, salvo no fim da seção 11
+CONJUNTOS = {"22 (paper)": MODELOS_22, "25 (full)": TODOS_OS_MODELOS}
+agregados = []        # filled in sections 8 and 11, saved at the end of section 11
 for rotulo, modelos in CONJUNTOS.items():
-    print(f"conjunto {rotulo}: {len(modelos)} modelos")
-assert len(MODELOS_22) == 22 and len(TODOS_OS_MODELOS) == 25, "conjunto de modelos inesperado"
+    print(f"model set {rotulo}: {len(modelos)} models")
+assert len(MODELOS_22) == 22 and len(TODOS_OS_MODELOS) == 25, "unexpected model set"
 
 rankings = {}
 for base, protocolo in CENARIOS:
     teste = media_todos.query("base == @base and protocolo == @protocolo and parte == 'teste'").set_index("modelo")
     ranking = pd.DataFrame({U.NOMES_METRICAS[m]: U.media_dp(teste[f"{m}_mean"], teste[f"{m}_std"])
                             for m in U.METRICAS})
-    ranking["tipo"] = ["ensemble" if m in U.ENSEMBLES_033 else "individual" for m in ranking.index]
+    ranking["kind"] = ["ensemble" if m in U.ENSEMBLES_033 else "individual" for m in ranking.index]
     ranking = ranking.loc[teste["f1_mean"].sort_values(ascending=False).index]
-    ranking.insert(0, "posição", range(1, len(ranking) + 1))
-    # Posição dentro dos 22 do artigo: é a que o texto cita (o Graph-FP, por exemplo, é 15º
-    # entre os 22 e 16º entre os 25).
+    ranking.insert(0, "rank", range(1, len(ranking) + 1))
+    # Rank within the paper's 22 models: that is the one the text cites (Graph-FP, for
+    # instance, is 15th among the 22 and 16th among the 25).
     nos_22 = [m for m in ranking.index if m in MODELOS_22]
-    ranking.insert(1, "posição (22 do artigo)",
+    ranking.insert(1, "rank (paper's 22)",
                    [nos_22.index(m) + 1 if m in MODELOS_22 else None for m in ranking.index])
     rankings[(base, protocolo)] = ranking
     ranking.to_csv(out(f"ex033_ranking_{base}_{protocolo}.csv"))
-    print(f"Ranking por F1 de teste — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]} "
-          f"(média ± desvio-padrão das 15 folds)")
+    print(f"Ranking by mean test F1 — {NOME_BASE[base]} — {NOME_PROTOCOLO[protocolo]} "
+          f"(mean ± sd over the 15 folds)")
     display(ranking)
 """)
 
 # ---------------------------------------------------------------------------- 8
 md("""
-## 8. Scaffold x aleatório
+## 8. Scaffold vs random
 
-F1 e ROC-AUC de teste de cada modelo nos dois protocolos (média ± desvio-padrão das 15 folds), em cada base, e a diferença aleatório − scaffold. No split aleatório, compostos com o mesmo esqueleto caem em treino e teste, então o teste é mais parecido com o treino; a diferença mede quanto do desempenho depende de já ter visto esqueletos parecidos. As folds dos dois protocolos são diferentes, então a comparação é das médias, não fold a fold, e o desvio do Δ é √(dp_scaffold² + dp_aleatório²). O Δ médio entre modelos vem com o desvio-padrão entre os modelos.
+Test F1 and ROC-AUC of every model under both splits (mean ± standard deviation over the 15 folds), in each dataset, and the difference random − scaffold. Under the random split, compounds sharing a skeleton fall on both sides, so the test fold looks more like training; the difference measures how much of the performance depends on having seen similar skeletons. The folds of the two splits are different, so the comparison is between means rather than fold by fold, and the standard deviation of Δ is √(sd_scaffold² + sd_random²). The mean Δ across models comes with the standard deviation across models.
 
-A correlação de Spearman entre os F1 dos dois protocolos diz se a ordem dos modelos se mantém. O Δ médio e o Spearman são agregações entre modelos, então saem nos dois conjuntos (22 e 25); o artigo cita os de 22.
+The Spearman correlation between the F1 values of the two splits says whether the ordering of the models survives. The mean Δ and the Spearman are aggregations across models, so both model sets (22 and 25) are reported; the paper quotes the 22.
 """)
 code("""
 comparacao_protocolos = {}
 for base in BASES:
     tabela = U.comparar(media_todos.query("base == @base"), "protocolo", "scaffold", "aleatorio")
     tabela = tabela.sort_values("F1 (scaffold)", ascending=False)
-    tabela.insert(0, "tipo", ["ensemble" if m in U.ENSEMBLES_033 else "individual" for m in tabela.index])
+    tabela.insert(0, "kind", ["ensemble" if m in U.ENSEMBLES_033 else "individual" for m in tabela.index])
     comparacao_protocolos[base] = tabela
-    tabela.to_csv(out(f"ex033_scaffold_x_aleatorio_{base}.csv"))
-    print(f"{NOME_BASE[base]} — teste, média ± desvio-padrão das 15 folds")
+    tabela.to_csv(out(f"scaffold_vs_random_{base}.csv"))
+    print(f"{NOME_BASE[base]} — test folds, mean ± sd over the 15 folds")
     for rotulo, modelos in CONJUNTOS.items():
         sub = tabela.loc[[m for m in tabela.index if m in modelos]]
         rho = spearmanr(sub["F1 (scaffold)"], sub["F1 (aleatorio)"]).statistic
         delta_f1 = sub["Δ F1 (aleatorio − scaffold)"]
         delta_auc = sub["Δ ROC-AUC (aleatorio − scaffold)"]
-        print(f"  [{len(sub)} modelos, conjunto {rotulo}] "
-              f"Δ F1 médio entre modelos (aleatório − scaffold): {delta_f1.mean():+.4f} ± {delta_f1.std():.4f}; "
-              f"Δ ROC-AUC médio: {delta_auc.mean():+.4f} ± {delta_auc.std():.4f}; "
-              f"Spearman entre os F1: {rho:.3f}")
-        agregados.append({"comparação": "aleatório − scaffold", "fixo": NOME_BASE[base],
-                          "conjunto": rotulo, "modelos": len(sub),
-                          "Δ F1 médio": delta_f1.mean(), "Δ F1 dp entre modelos": delta_f1.std(),
-                          "Δ ROC-AUC médio": delta_auc.mean(),
-                          "Δ ROC-AUC dp entre modelos": delta_auc.std(),
-                          "modelos com Δ F1 < 0": int((delta_f1 < 0).sum()), "Spearman": rho})
+        print(f"  [{len(sub)} models, set {rotulo}] "
+              f"mean Δ F1 across models (random − scaffold): {delta_f1.mean():+.4f} ± {delta_f1.std():.4f}; "
+              f"mean Δ ROC-AUC: {delta_auc.mean():+.4f} ± {delta_auc.std():.4f}; "
+              f"Spearman between the F1 values: {rho:.3f}")
+        agregados.append({"comparison": "random − scaffold", "held fixed": NOME_BASE[base],
+                          "model set": rotulo, "models": len(sub),
+                          "mean Δ F1": delta_f1.mean(), "Δ F1 sd across models": delta_f1.std(),
+                          "mean Δ ROC-AUC": delta_auc.mean(),
+                          "Δ ROC-AUC sd across models": delta_auc.std(),
+                          "models with Δ F1 < 0": int((delta_f1 < 0).sum()), "Spearman": rho})
     display(U.formatar_dp(tabela))
 """)
 code("""
@@ -597,8 +595,8 @@ for ax, base in zip(axes, BASES):
                 color=cor, label=NOME_PROTOCOLO[protocolo], error_kw={"lw": 0.8})
     ax.set_yticks(posicoes)
     ax.set_yticklabels(ordem, fontsize=8)
-    ax.set_xlabel("F1 de teste (média ± desvio-padrão das 15 folds)")
-    ax.set_title(f"Scaffold x aleatório — {NOME_BASE[base]}")
+    ax.set_xlabel("test F1 (mean ± sd over the 15 folds)")
+    ax.set_title(f"Scaffold vs random — {NOME_BASE[base]}")
     ax.grid(axis="x", alpha=0.3)
     ax.legend(loc="lower right")
 fig.tight_layout()
@@ -608,21 +606,21 @@ plt.show()
 
 # ---------------------------------------------------------------------------- 9
 md("""
-## 9. Diversidade do ensemble guloso (split por scaffold)
+## 9. Diversity of the greedy ensemble (scaffold split)
 
-Medidas par a par entre os membros de consenso do ensemble guloso no split por scaffold (escolhidos em pelo menos metade das folds), calculadas nas predições de teste da repetição de seed 42, no limiar 0,5 (cada composto é previsto uma vez, por um modelo que não o viu):
+Pairwise measures between the consensus members of the greedy ensemble under the scaffold split (those selected in at least half of the folds), computed on the test predictions of the seed-42 repetition at threshold 0.5, where every compound is predicted exactly once by a model that has not seen it:
 
-- **Double-fault:** fração de compostos que os dois erram (menor = mais complementares).
-- **Q-statistic:** 0 = erros independentes, 1 = erros coincidentes.
-- **Disagreement:** fração de compostos em que os dois discordam (maior = mais diversos).
-- **Correlation coefficient:** correlação entre os vetores de acerto.
+- **Double-fault:** the fraction of compounds both get wrong (lower = more complementary).
+- **Q-statistic:** 0 = independent errors, 1 = coincident errors.
+- **Disagreement:** the fraction of compounds the two disagree on (higher = more diverse).
+- **Correlation coefficient:** the correlation between the two hit/miss vectors.
 """)
 code("""
 for base in BASES:
     cenario = (base, "scaffold")
     membros_div = consenso[base]
     if len(membros_div) < 2:
-        print(f"{NOME_BASE[base]}: menos de 2 membros de consenso, sem mapa de diversidade.")
+        print(f"{NOME_BASE[base]}: fewer than 2 consensus members, no diversity map.")
         continue
     acertos = U.acertos_oof(Y[base], indices[cenario], membros[cenario], membros_div, seed=SEEDS[0])
     fig, axes = plt.subplots(1, 4, figsize=(5 * 4, 4.4))
@@ -639,24 +637,24 @@ for base in BASES:
                     ax.text(j, i, f"{matriz[i, j]:.2f}", ha="center", va="center", fontsize=7, color="w")
         ax.set_title(titulo)
         fig.colorbar(imagem, ax=ax, fraction=0.046)
-    fig.suptitle(f"Diversidade do ensemble guloso — {NOME_BASE[base]}, split por scaffold")
+    fig.suptitle(f"Diversity of the greedy ensemble — {NOME_BASE[base]}, scaffold split")
     fig.tight_layout()
-    fig.savefig(out(f"ex033_diversidade_{base}_scaffold.png"), dpi=150, bbox_inches="tight")
+    fig.savefig(out(f"diversity_{base}_scaffold.png"), dpi=150, bbox_inches="tight")
     plt.show()
 """)
 
 # ---------------------------------------------------------------------------- 10
 md("""
-## 10. Estudo do limiar (split por scaffold)
+## 10. Threshold sweep (scaffold split)
 
-Até aqui todas as métricas usaram o limiar 0,5. Aqui o melhor modelo individual e o melhor ensemble **no split por scaffold** (maior F1 médio de teste) são avaliados na grade de limiares de 0,40 a 0,60 (passo 0,01), em cada base:
+Every metric so far used the threshold 0.5. Here the best individual model and the best ensemble **under the scaffold split** (highest mean test F1) are evaluated over a threshold grid from 0.40 to 0.60 in steps of 0.01, in each dataset:
 
-- **Curva OOF (linha cheia):** F1 médio das 15 folds nas probabilidades out-of-fold internas da parte de treino, em cada limiar.
-- **Curva de teste (linha tracejada):** F1 médio das 15 folds no teste, em cada limiar. Só para visualização; não entra na escolha.
-- **Limiar escolhido:** um por modelo, o pico da curva OOF.
-- **Círculos:** as duas curvas em 0,5. **Estrelas:** as duas curvas no limiar escolhido.
+- **Out-of-fold curve (solid line):** mean F1 over the 15 folds on the inner out-of-fold probabilities of the training part, at each threshold.
+- **Test curve (dashed line):** mean test F1 over the 15 folds at each threshold. Shown for reference only; it never informs the choice.
+- **Selected threshold:** one per model, at the peak of the out-of-fold curve.
+- **Circles:** both curves at 0.5. **Stars:** both curves at the selected threshold.
 
-A tabela traz exatamente os valores dos círculos e das estrelas, com o desvio-padrão das 15 folds. As folds são as mesmas nos dois limiares, então o desvio do Δ é o desvio da diferença fold a fold. O teste não entra na escolha, mas o OOF de uma fold vem de um treino que contém compostos de teste de outras folds. Como o limiar é um único escalar, esse vazamento é leve.
+The table holds exactly the values of the circles and the stars, with the standard deviation over the 15 folds. The folds are the same at both thresholds, so the standard deviation of Δ is that of the per-fold difference. The test fold never enters the choice, but the out-of-fold scores of one fold come from a training set that contains test compounds of other folds; since the threshold is a single scalar, that leakage is mild.
 """)
 code("""
 resultados_limiar = []
@@ -673,52 +671,52 @@ for ax, base in zip(axes, BASES):
         probas = {(s, k): r for (s, k, n), r in fonte.items() if n == modelo}
         por_fold, curva, limiar = U.estudo_limiar(Y[base], indices[cenario], probas)
         ax.plot(curva.index, curva["f1_oof_mean"], ls="-", color=cor, label=f"{modelo} — OOF")
-        ax.plot(curva.index, curva["f1_teste_mean"], ls="--", color=cor,
-                label=f"{modelo} — teste (só visualização)")
-        ax.scatter([0.5, 0.5], curva.loc[0.5, ["f1_oof_mean", "f1_teste_mean"]], s=70,
+        ax.plot(curva.index, curva["f1_test_mean"], ls="--", color=cor,
+                label=f"{modelo} — test (reference only)")
+        ax.scatter([0.5, 0.5], curva.loc[0.5, ["f1_oof_mean", "f1_test_mean"]], s=70,
                    facecolors="none", edgecolors=cor, linewidths=2, zorder=3)
-        ax.scatter([limiar, limiar], curva.loc[limiar, ["f1_oof_mean", "f1_teste_mean"]], s=160,
+        ax.scatter([limiar, limiar], curva.loc[limiar, ["f1_oof_mean", "f1_test_mean"]], s=160,
                    marker="*", color=cor, edgecolors="black", linewidths=0.6, zorder=4)
-        por_limiar = por_fold.set_index(["limiar", "seed", "fold"]).sort_index()
-        linha = {"base": NOME_BASE[base], "modelo": modelo, "limiar escolhido (pico OOF)": limiar}
-        for coluna, nome in (("f1_oof", "F1 OOF"), ("f1_teste", "F1 teste")):
+        por_limiar = por_fold.set_index(["threshold", "seed", "fold"]).sort_index()
+        linha = {"dataset": NOME_BASE[base], "model": modelo, "selected threshold (out-of-fold peak)": limiar}
+        for coluna, nome in (("f1_oof", "out-of-fold F1"), ("f1_test", "test F1")):
             delta = por_limiar.loc[limiar, coluna] - por_limiar.loc[0.5, coluna]
             linha.update({
-                f"{nome} em 0,5": curva.loc[0.5, f"{coluna}_mean"],
-                f"{nome} em 0,5 dp": curva.loc[0.5, f"{coluna}_std"],
-                f"{nome} no limiar escolhido": curva.loc[limiar, f"{coluna}_mean"],
-                f"{nome} no limiar escolhido dp": curva.loc[limiar, f"{coluna}_std"],
-                f"Δ {nome}": delta.mean(), f"Δ {nome} dp": delta.std()})
+                f"{nome} at 0.5": curva.loc[0.5, f"{coluna}_mean"],
+                f"{nome} at 0.5 sd": curva.loc[0.5, f"{coluna}_std"],
+                f"{nome} at the selected threshold": curva.loc[limiar, f"{coluna}_mean"],
+                f"{nome} at the selected threshold sd": curva.loc[limiar, f"{coluna}_std"],
+                f"Δ {nome}": delta.mean(), f"Δ {nome} sd": delta.std()})
         resultados_limiar.append(linha)
     ax.axvline(0.5, color="gray", ls=":", lw=1)
     ax.scatter([], [], s=70, facecolors="none", edgecolors="gray", linewidths=2,
-               label="limiar 0,5")
+               label="threshold 0.5")
     ax.scatter([], [], s=160, marker="*", color="gray", edgecolors="black", linewidths=0.6,
-               label="limiar escolhido (pico OOF)")
-    ax.set_xlabel("limiar")
-    ax.set_title(f"F1 em função do limiar — {NOME_BASE[base]}, scaffold")
+               label="selected threshold (out-of-fold peak)")
+    ax.set_xlabel("threshold")
+    ax.set_title(f"F1 as a function of the threshold — {NOME_BASE[base]}, scaffold")
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
-axes[0].set_ylabel("F1 médio (15 folds)")
+axes[0].set_ylabel("mean F1 (15 folds)")
 fig.tight_layout()
-fig.savefig(out("ex033_estudo_limiar_scaffold.png"), dpi=150, bbox_inches="tight")
+fig.savefig(out("threshold_sweep_scaffold.png"), dpi=150, bbox_inches="tight")
 plt.show()
 
 tabela_limiar = pd.DataFrame(resultados_limiar)
-tabela_limiar.to_csv(out("ex033_estudo_limiar_scaffold.csv"), index=False)
-print("Média ± desvio-padrão das 15 folds")
+tabela_limiar.to_csv(out("threshold_sweep_scaffold.csv"), index=False)
+print("Mean ± sd over the 15 folds")
 display(U.formatar_dp(tabela_limiar))
 """)
 
 # ---------------------------------------------------------------------------- 11
 md("""
-## 11. Base padronizada x não padronizada
+## 11. Standardized vs unstandardized dataset
 
-Primeiro, as oito métricas de teste de todos os modelos em cada base e protocolo (quatro tabelas, média ± desvio-padrão das 15 folds, ordenadas por F1). Depois, F1 e ROC-AUC de cada modelo nas duas bases, lado a lado, e a diferença padronizada − não padronizada. As bases não têm os mesmos compostos (a padronizada une as duplicatas estruturais), então a comparação é das médias, não composto a composto, e o desvio do Δ é √(dp_padronizada² + dp_original²). O Δ médio entre modelos vem com o desvio-padrão entre os modelos.
+First, the eight test metrics of every model in each dataset and under each split (four tables, mean ± standard deviation over the 15 folds, ordered by F1). Then test F1 and ROC-AUC of every model on both datasets, side by side, and the difference standardized − unstandardized. The two datasets do not hold the same compounds (the standardized one merges structural duplicates), so the comparison is between means rather than compound by compound, and the standard deviation of Δ is √(sd_standardized² + sd_unstandardized²). The mean Δ across models comes with the standard deviation across models.
 
-Como na seção 8, o Δ médio entre modelos e o Spearman saem nos dois conjuntos de modelos, e o artigo cita os de 22 — inclusive a contagem de quantos modelos pioram com a padronização, que é 19 de 22 (e 22 de 25).
+As in section 8, the mean Δ across models and the Spearman are reported for both model sets, and the paper quotes the 22 — including how many models decline under standardization, which is 19 of 22 (and 22 of 25).
 
-Na base não padronizada, formas da mesma substância (sal e base livre, formas carregada e neutra, tautômeros) são linhas diferentes. No split aleatório elas podem cair uma no treino e outra no teste, e o modelo é avaliado em um composto que já viu. A tabela de vazamento conta esses casos nos dois protocolos; no split por scaffold ele quase não acontece, porque as formas da mesma substância quase sempre têm o mesmo esqueleto e ficam no mesmo grupo.
+In the unstandardized dataset, forms of the same substance (salt and free base, charged and neutral forms, tautomers) are separate rows. Under the random split one form can land in training and another in test, and the model is then scored on a compound it has already seen. The leakage table counts those cases under both splits; under the scaffold split it almost never happens, because forms of the same substance nearly always share a skeleton and fall in the same group.
 """)
 code("""
 for base, protocolo in CENARIOS:
@@ -817,19 +815,19 @@ display(U.formatar_dp(resumo_cenarios))
 
 # ---------------------------------------------------------------------------- 12
 md("""
-## 12. Validação externa
+## 12. External validation
 
-O conjunto externo (1.557 compostos, 35 positivos) não entra em nenhum treino nem em nenhuma escolha deste experimento. Ele é avaliado **uma vez**, sem k-fold, com modelos treinados com a base de treino inteira:
+The external set (1,557 compounds, 35 positives) enters no fit and no decision in this study. It is read **once**, without k-fold, by models refit on the whole training set:
 
-- **Modelos:** o melhor individual e o melhor ensemble do split por scaffold (maior F1 médio de teste), em cada base. Os modelos finais seguem a seção 3.1: `C`, membros da seleção gulosa, pesos e meta-modelo vêm de uma CV de 5 folds por scaffold sobre a base inteira. A base não padronizada ganha aqui os seus modelos finais, treinados do mesmo jeito.
-- **Duas versões do externo:**
-  - *não padronizada*: os SMILES originais, avaliados pelos modelos da base não padronizada, com os embeddings do EX_027;
-  - *padronizada*: os SMILES passam pela mesma padronização da seção 1 (formas da mesma substância viram uma linha, rótulo positivo se qualquer forma for positiva), com embeddings gerados agora, e são avaliados pelos modelos da base padronizada.
-- **Sobreposição removida:** compostos do externo que são a mesma substância (mesmo InChIKey padronizado) de algum composto de treino saem da avaliação, porque o modelo já os viu.
-- **Cortes:** *completo* (tudo menos a sobreposição) e *scaffold inédito* (só compostos cujo esqueleto de Bemis–Murcko não aparece na base de treino).
-- **Métricas de triagem**, livres de limiar: Precision@K e Recall@K para K = 50, 100 e 200, e BEDROC (α = 20). A prevalência do externo (≈ 2%) é muito menor que a do treino (17%), então essas métricas comparam a ordem dos compostos, não o corte em 0,5.
+- **Models:** the best individual and the best ensemble under the scaffold split (highest mean test F1), in each dataset. The final models follow section 3.1: `C`, greedy members, weights and meta-model come from a 5-fold scaffold CV over the full training set. The unstandardized dataset gets its own final models here, fitted the same way.
+- **Two versions of the external set:**
+  - *unstandardized*: the original SMILES, scored by the unstandardized models;
+  - *standardized*: the SMILES go through the same standardization as section 1 (forms of one substance become a single row, positive if any form is positive), with embeddings generated for them, and are scored by the standardized models.
+- **Overlap removed:** external compounds that are the same substance (same standardized InChIKey) as a training compound leave the evaluation, because the models have seen them.
+- **Cuts:** *full* (everything but the overlap) and *novel scaffold* (only compounds whose Bemis–Murcko skeleton is absent from the training set).
+- **Screening metrics**, all threshold-free: Precision@K and Recall@K for K = 50, 100 and 200, and BEDROC (α = 20). The external prevalence (≈2%) is far below the training one (17%), so these metrics compare the ordering of the compounds rather than a cut at 0.5.
 
-As predições ficam salvas em CSV. Rodar de novo carrega o arquivo e não lê o externo outra vez; cada leitura nova é registrada no log de leituras do conjunto externo (`resultados/json/external_read_log_ex026.json`). O EX_025, o EX_026 e o EX_027 já leram esse conjunto, então ele não é mais um lock-box virgem.
+The predictions are cached as a CSV. Re-running loads that file and does not read the external set again; every new read is appended to the external-read log.
 """)
 code("""
 BASE_EXTERNA = os.path.join(ROOT, "dados", "Bases de dados", "Treinamento - limpas",
@@ -961,15 +959,15 @@ display(externo_triagem.round(4))
 
 # ---------------------------------------------------------------------------- 13
 md("""
-## 13. Intervalos de confiança e testes pareados (limitação i)
+## 13. Confidence intervals and paired tests (limitation i)
 
-Até aqui tudo foi reportado como média ± desvio-padrão das 15 folds. Esse desvio descreve a **variabilidade entre partições**, não a incerteza da estimativa: as folds compartilham dados de treino e não são independentes, então ele não é intervalo de confiança e não sustenta afirmação de significância. Esta seção produz as duas peças que faltavam, com as funções do EX_027:
+Everything so far was reported as mean ± standard deviation over the 15 folds. That standard deviation describes **partition variability**, not the uncertainty of the estimate: the folds share training data and are not independent, so it is not a confidence interval and it cannot support a claim of significance. This section adds the two missing pieces:
 
-- **Bootstrap por scaffold.** Em uma repetição (seed 42), as 5 folds cobrem a base inteira e cada composto é previsto exatamente uma vez, por um modelo que não o viu. O bootstrap reamostra **grupos de scaffold inteiros**, não compostos: compostos do mesmo esqueleto não são observações independentes, e reamostrar linha a linha trata uma série congênere como vários sorteios independentes, o que estreita o intervalo sem informação nova. São 2.000 réplicas.
-- **Bootstrap pareado.** Dois intervalos que se sobrepõem **não** implicam que a diferença seja nula, quando os modelos são correlacionados — e modelos avaliados nos mesmos compostos sempre são. A pergunta "A supera B" se responde no intervalo da diferença, com o mesmo reamostramento aplicado aos dois.
-- **Teste t corrigido de Nadeau–Bengio.** Sobre as 15 folds, para as afirmações que só existem em forma de valores por fold. A correção troca o fator de variância 1/n por 1/n + n_teste/n_treino = 0,3167. O p ingênuo vai impresso ao lado, para mostrar o tamanho da diferença.
+- **Scaffold bootstrap.** Within one repetition (seed 42) the 5 folds cover the whole dataset and every compound is predicted exactly once, by a model that has not seen it. The bootstrap resamples **whole scaffold groups** rather than compounds: compounds sharing a skeleton are not independent observations, and resampling row by row treats a congeneric series as several independent draws, which narrows the interval without adding information. 2,000 replicates.
+- **Paired bootstrap.** Two overlapping intervals do **not** imply that the difference is null when the models are correlated — and models scored on the same compounds always are. "Does A beat B" is answered by the interval of the difference, with the same resample applied to both score vectors.
+- **Corrected resampled t-test (Nadeau–Bengio).** Over the 15 folds, for the claims that exist only as per-fold values. The correction replaces the 1/n variance factor by 1/n + n_test/n_train = 0.3167. The uncorrected p-value is printed alongside, to show the size of the difference.
 
-O cenário é o principal: **base padronizada, split por scaffold**. A referência é o melhor modelo individual.
+The setting is the strictest one: **standardized dataset, scaffold split**. The reference is the best individual representation.
 """)
 code("""
 N_BOOT = 2000
@@ -1020,21 +1018,21 @@ display(nadeau.assign(
 
 # ---------------------------------------------------------------------------- 14
 md("""
-## 14. Calibração do stacking e seleção sem limiar (limitações vi e v)
+## 14. Stacking calibration and threshold-free selection (limitations vi and v)
 
-### 14.1 O que a calibração muda
+### 14.1 What calibration changes
 
-A calibração é monótona, então ROC-AUC e PR-AUC do stacking **não mudam**: a ordem dos compostos é a mesma. O que muda é onde o limiar 0,5 cai na distribuição de escores, e portanto todas as métricas que dependem do corte.
+Calibration is monotone, so the stacking ROC-AUC and average precision **do not change**: the ordering of the compounds is the same. What changes is where the threshold 0.5 falls in the score distribution, and therefore every metric that depends on the cut.
 
-Aqui está o ponto que o diagnóstico do EX_032 não antecipou: **calibrar e continuar lendo o modelo em 0,5 piora o F1**, em vez de melhorar. O stacking descalibrado empurra as probabilidades para cima, então em 0,5 ele prevê positivo demais (recall alto, precision baixa). A calibração encolhe as probabilidades na direção da prevalência real, 17%; com isso quase nenhum composto passa de 0,5, o recall desaba e o F1 cai. As duas leituras são sintomas do mesmo problema: **0,5 não é o corte certo para esse modelo**, antes nem depois.
+Here is the part the first diagnosis did not anticipate: **calibrating and still reading the model at 0.5 lowers F1** instead of raising it. Uncalibrated stacking pushes probabilities upward, so at 0.5 it predicts positive too often (high recall, low precision). Calibration shrinks the probabilities toward the real prevalence, 17%; almost nothing then clears 0.5, recall collapses and F1 falls. Both readings are symptoms of the same thing: **0.5 is not the right cut for this model**, before or after.
 
-Por isso a seção avalia as duas coisas juntas. Para cada variante do stacking, o F1 é medido em 0,5 e no **limiar escolhido dentro do fold** — o que maximiza o F1 nas probabilidades out-of-fold internas da parte de treino, sobre uma grade larga de 0,05 a 0,95. A grade de 0,40 a 0,60 da seção 10 não serve aqui: o ótimo de um modelo calibrado fica muito abaixo dela. O teste do fold não entra na escolha.
+So this section evaluates the two together. For each stacking variant, F1 is measured at 0.5 and at the **threshold chosen inside the fold** — the one that maximizes F1 on the inner out-of-fold probabilities of the training part, over a wide grid from 0.05 to 0.95. The 0.40–0.60 grid of section 10 is useless here: the optimum of a calibrated model sits far below it. The test fold never enters the choice.
 
-A previsão a conferir na tabela: como a calibração é monótona, **os três stackings devem chegar ao mesmo F1 depois que o limiar é escolhido no fold**. Se isso acontecer, o diagnóstico "stacking descalibrado" se resolve em "stacking lido no limiar errado", e a calibração passa a valer pelo que ela de fato entrega — uma probabilidade interpretável e um limiar bem posto — e não por desempenho extra.
+The prediction to check in the table: because calibration is monotone, **the three stackings should reach the same F1 once the threshold is chosen in the fold**. If they do, the diagnosis "uncalibrated stacking" becomes "stacking read at the wrong threshold", and calibration is then worth what it actually delivers — an interpretable probability and a well-placed threshold — rather than extra performance.
 
-### 14.2 Seleção gulosa: F1 em 0,5 contra PR-AUC
+### 14.2 Greedy selection: F1 at 0.5 versus average precision
 
-A versão por F1 escolhe os membros maximizando o F1 no limiar 0,5, nas mesmas probabilidades out-of-fold que depois alimentam o estudo do limiar — por isso a curva OOF daquele ensemble tem um pico exatamente em 0,5 e o estudo não consegue avaliar outro limiar para ele. A versão por PR-AUC não usa limiar nenhum na escolha. Comparar as duas diz se a circularidade estava custando desempenho e se os membros escolhidos mudam.
+The F1 variant picks its members by maximizing F1 at threshold 0.5 on the very out-of-fold probabilities that later feed the threshold study — which is why that ensemble's out-of-fold curve peaks exactly at 0.5 and the study cannot evaluate any other threshold for it. The AP variant uses no threshold at all in the selection. Comparing the two says whether the circularity was costing performance and whether the selected members change.
 """)
 code("""
 cenario_ic = ("padronizada", "scaffold")
@@ -1124,11 +1122,11 @@ display(limiar_criterio.round(4))
 
 # ---------------------------------------------------------------------------- 15
 md("""
-## 15. Colapso por InChIKey (limitação iii)
+## 15. InChIKey collapse (limitation iii)
 
-No split por scaffold o vazamento de duplicatas já é quase zero (0,4 composto por fold), e mesmo assim a base padronizada perde cerca de 0,016 de F1 para a não padronizada. O EX_032 não isolou a causa. A hipótese mais plausível é **contagem**: na base não padronizada, uma substância presente em várias formas é pontuada várias vezes no mesmo fold de teste, e se essas substâncias forem as mais estudadas, e portanto mais fáceis, o F1 sobe sem que o modelo seja melhor.
+Under the scaffold split, duplicate leakage is already almost zero (0.4 compounds per fold), and the standardized dataset still loses about 0.016 F1 to the unstandardized one. The most plausible explanation is **counting**: in the unstandardized dataset a substance present in several forms is scored several times in the same test fold, and if those substances are the most studied ones, and therefore the easier ones, F1 rises without the model being any better.
 
-O teste é direto e não exige reajustar nada: pegar as predições de teste da base **não padronizada** e agregá-las por InChIKey padronizado, com uma predição por substância (média das probabilidades) e o rótulo pela mesma regra "qualquer forma positiva" da padronização. Se o Δ para a base padronizada encolher, a queda era efeito de contagem. Se continuar, a causa é outra.
+The test is direct and refits nothing: take the test predictions of the **unstandardized** dataset and aggregate them by standardized InChIKey, with one prediction per substance (the mean of the probabilities) and the label by the same "positive if any form is positive" rule used by standardization. If the Δ against the standardized dataset shrinks, the drop was a counting effect. If it holds, the cause is elsewhere.
 """)
 code("""
 chaves_original = quimica_original["L5_inchikey"].to_numpy()
@@ -1179,19 +1177,19 @@ display(tabela)
 
 # ---------------------------------------------------------------------------- 16
 md("""
-## 16. Ablação dos conflitos de rótulo (limitação iv)
+## 16. Label-conflict ablation (limitation iv)
 
-A fusão por InChIKey junta formas da mesma substância que vinham com rótulos diferentes. São **82 substâncias**, todas resolvidas como positivas pela mesma regra que a base já usava para conflitos entre fontes. Essa escolha nunca foi testada na base padronizada. Aqui as três políticas são comparadas:
+Merging by InChIKey joins forms of the same substance that arrived with different labels. There are **82 such substances**, all resolved as positive by the same rule the dataset already used for conflicts between sources. That choice had never been tested. Here the three policies are compared:
 
-| Política | Compostos | Positivos | Prevalência |
+| Policy | Compounds | Positives | Prevalence |
 |---|---|---|---|
-| positivo (padrão do EX_032) | 3.752 | 637 | 16,98% |
-| removido | 3.670 | 555 | 15,12% |
-| negativo | 3.752 | 555 | 14,79% |
+| positive (the default) | 3,752 | 637 | 16.98% |
+| removed | 3,670 | 555 | 15.12% |
+| negative | 3,752 | 555 | 14.79% |
 
-Diferente das outras seções, esta **reajusta os modelos**: mudar rótulos invalida os checkpoints. Para manter o custo em cerca de uma hora, a ablação roda só na base padronizada e só no split por scaffold, que é o cenário principal; são 2 políticas novas × 18 representações × 15 folds = 540 ajustes, em checkpoints próprios. A ablação não existe para a base não padronizada, onde essas formas são linhas separadas com seus próprios rótulos e não há conflito a resolver.
+Unlike every other section, this one **refits the models**: changing labels invalidates the checkpoints. To keep the cost near an hour, the ablation runs on the standardized dataset and the scaffold split only, which is the reference setting; that is 2 new policies × 18 representations × 15 folds = 540 fits, in checkpoints of their own. There is no ablation for the unstandardized dataset, where these forms are separate rows with their own labels and there is no conflict to resolve.
 
-O que interessa não é o valor absoluto, que muda só pela prevalência, mas se **a ordem das representações e a vantagem do ensemble sobrevivem** à política de rótulo.
+What matters is not the absolute value, which moves with prevalence alone, but whether **the ordering of the representations and the ensemble advantage survive** the label policy.
 """)
 code("""
 checkpoints_ablacao = U.Checkpoints(os.path.join(RESULTS_DIR, "checkpoints", "checkpoints_ex033_ablacao"))
