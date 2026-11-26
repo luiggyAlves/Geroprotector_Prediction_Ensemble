@@ -88,32 +88,6 @@ results/
   models/                               final models, fitted on the full training set
 ```
 
-## One thing to know before reading the aggregate tables
-
-Sections 7, 8 and 11 aggregate *across models*: the mean Δ per model and the Spearman
-correlation between rankings. The result depends on which models enter the average, and this
-study grew by three ensembles along the way — the average-precision greedy variant and the two
-calibrated stackings were added after the first round. The numbers reported in the manuscript
-come from the **22-model** set (18 encoders + 4 ensembles): mean Δ F1 of +0.042 and +0.0215,
-mean Δ ROC-AUC of +0.041 and +0.024, the −0.016 drop with 19 of 22 models declining, and a
-minimum Spearman of 0.948. Over all 25 models the same quantities are +0.047, +0.024, +0.042,
-+0.025, −0.021 with 22 of 25 declining, and a minimum Spearman of 0.862.
-
-Both are computed and printed side by side, labelled by set, and saved to
-`results/tables/across_model_aggregates_by_set.csv`. The ranking tables carry both positions,
-so a model that sits 15th among the 22 is 16th among the 25. Nothing else depends on this
-choice: per-model metrics, ensembles, confidence intervals and the external set are model by
-model.
-
-## Data provenance
-
-The primary dataset is a reconstruction, from public sources (AgeXtend, DrugAge, *C. elegans*
-screens, senolytics collections, Geroprotectors.org), of the consolidation strategy described
-by Gero-LLM. What this repository ships is that reconstruction plus its standardization audit;
-redistribution of any upstream data remains subject to the original licensing terms. The
-standardized dataset applies RDKit `rdMolStandardize` (cleanup, fragment parent, uncharging,
-canonical tautomer) and merges rows that share an InChIKey. See
-[`data/gerollm_reconstructed/METHODOLOGY.md`](data/gerollm_reconstructed/METHODOLOGY.md).
 
 ## Executed outputs
 
